@@ -24,67 +24,81 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Master colour palette ──────────────────────────────────────────────────────
-# 15 visually distinct colours based on Tableau 10 + extras.
-# Used for any categorical series that doesn't have a semantic mapping.
+# ── iMining brand palette ─────────────────────────────────────────────────────
+# Yellow 1: #f5911e  Yellow 2: #ffb964  Yellow 3: #ffdca0  Navy: #002841
+# Derived blues added for contrast on the dark background.
 MASTER_PALETTE = [
-    "#4E79A7",  # steel blue
-    "#F28E2B",  # orange
-    "#E15759",  # coral red
-    "#76B7B2",  # teal
-    "#59A14F",  # green
-    "#EDC948",  # amber
-    "#B07AA1",  # purple
-    "#FF9DA7",  # pink
-    "#9C755F",  # brown
-    "#499894",  # dark teal
-    "#D37295",  # rose
-    "#86BCB6",  # light teal
-    "#FABFD2",  # blush
-    "#E8AC0F",  # gold
-    "#BAB0AC",  # warm grey
+    "#f5911e",  # Yellow 1 — primary brand orange
+    "#ffb964",  # Yellow 2 — light orange
+    "#ffdca0",  # Yellow 3 — peach/cream
+    "#0a84c8",  # Derived bright blue
+    "#e8710a",  # Burnt orange
+    "#5bb3d8",  # Sky blue
+    "#cc7a18",  # Deep amber
+    "#85c1e9",  # Light steel blue
+    "#d4860f",  # Rich amber
+    "#1a8fc1",  # Medium blue
+    "#ffa040",  # Warm orange
+    "#3da8d8",  # Cornflower blue
+    "#f0c040",  # Golden yellow
+    "#004a7a",  # Mid navy
+    "#e09000",  # Deep gold
 ]
 
 def palette_map(categories) -> dict:
-    """Assign a distinct master-palette colour to each unique category."""
-    cats = list(dict.fromkeys(categories))   # preserve order, deduplicate
+    """Assign a distinct brand-palette colour to each unique category."""
+    cats = list(dict.fromkeys(categories))
     return {c: MASTER_PALETTE[i % len(MASTER_PALETTE)] for i, c in enumerate(cats)}
+
+def _dark_chart(fig, **kwargs):
+    """Apply iMining dark-theme styling to a Plotly figure."""
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,28,51,0.55)",
+        font=dict(color="#ffffff"),
+        legend=dict(bgcolor="rgba(0,0,0,0)"),
+        **kwargs,
+    )
+    return fig
 
 
 # ── Semantic activity colours ─────────────────────────────────────────────────
-# Grouped by meaning: productive = blue/teal, movement = green,
-# idle/wait = grey/brown, maintenance = amber, safety/admin = orange,
-# problems = red/rose.
+# Productive = orange family (brand primary).
+# Movement   = bright blue.
+# Idle/wait  = light blue → peach.
+# Breakdown  = amber (orange replaces red, per brand).
+# Safety     = gold/warm orange.
+# Shift events = blue family.
 ACTIVITY_COLOURS = {
     # Core productive work
-    "Loading Explosives":        "#4E79A7",   # steel blue
-    "FQMO - Dipping & Priming":  "#499894",   # dark teal
-    "Reload":                    "#76B7B2",   # light teal
+    "Loading Explosives":        "#f5911e",   # Primary brand orange
+    "FQMO - Dipping & Priming":  "#e8710a",   # Burnt orange
+    "Reload":                    "#ffb964",   # Yellow 2 — light orange
     # Movement
-    "Travel":                    "#59A14F",   # green
+    "Travel":                    "#1a8fc1",   # Medium blue
     # Idle / waiting
-    "Standby":                   "#BAB0AC",   # warm grey
-    "Waiting For Explosives":    "#9C755F",   # brown
-    "Waiting For Personnel":     "#B07AA1",   # purple
+    "Standby":                   "#85c1e9",   # Light steel blue
+    "Waiting For Explosives":    "#ffdca0",   # Yellow 3 — peach
+    "Waiting For Personnel":     "#cc7a18",   # Deep amber
     # Maintenance / support
-    "Refueling":                 "#EDC948",   # amber
-    "Breakdown":                 "#E15759",   # coral red
+    "Refueling":                 "#3da8d8",   # Cornflower blue
+    "Breakdown":                 "#d4860f",   # Rich amber (replaces red)
     # Safety & admin
-    "Toolbox Talk":              "#F28E2B",   # orange
-    "Tool Box Meeting":          "#E8AC0F",   # gold
-    "Unsafe Condition":          "#D37295",   # rose
-    "Safety Violation":          "#E15759",   # red (same urgency as Breakdown)
-    # Shift boundaries (shown in timeline only)
-    "Shift Start":               "#86BCB6",   # pale teal
-    "Shift End":                 "#FABFD2",   # blush
+    "Toolbox Talk":              "#ffa040",   # Warm orange
+    "Tool Box Meeting":          "#f0c040",   # Golden yellow
+    "Unsafe Condition":          "#e09000",   # Deep gold
+    "Safety Violation":          "#cc7a18",   # Dark amber (replaces red)
+    # Shift boundaries
+    "Shift Start":               "#0a84c8",   # Bright derived blue
+    "Shift End":                 "#5bb3d8",   # Sky blue
 }
 
-# Checklist category colours — four distinct, non-activity colours
+# Checklist category colours — four brand-aligned distinct colours
 CATEGORY_COLOURS = {
-    "IN CAB CHECKS":     "#4E79A7",   # blue
-    "EXTERNAL CHECKS":   "#F28E2B",   # orange
-    "QUALITY":           "#59A14F",   # green
-    "BEFORE DRIVING OFF":"#E15759",   # red
+    "IN CAB CHECKS":      "#f5911e",   # Yellow 1 — primary orange
+    "EXTERNAL CHECKS":    "#ffb964",   # Yellow 2 — light orange
+    "QUALITY":            "#0a84c8",   # Derived bright blue
+    "BEFORE DRIVING OFF": "#ffdca0",   # Yellow 3 — peach
 }
 
 
@@ -200,7 +214,7 @@ st.markdown("---")
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab_logout, tab_util, tab_prestart = st.tabs([
-    "🔴  Missing Shift-End Logs",
+    "🟠  Missing Shift-End Logs",
     "📊  MMU Utilization",
     "⚠️  Pre-start Faults",
 ])
@@ -237,7 +251,7 @@ with tab_logout:
             color="operator_name",
             color_discrete_map=op_colours,
         )
-        fig_op.update_layout(showlegend=False, height=400)
+        _dark_chart(fig_op, showlegend=False, height=400)
         st.plotly_chart(fig_op, use_container_width=True)
 
     with col_b:
@@ -257,7 +271,7 @@ with tab_logout:
             color="reporting_date",
             color_discrete_map={str(k): v for k, v in date_colours.items()},
         )
-        fig_date.update_layout(showlegend=False, height=400)
+        _dark_chart(fig_date, showlegend=False, height=400)
         st.plotly_chart(fig_date, use_container_width=True)
 
     st.markdown("#### Session detail")
@@ -314,7 +328,7 @@ with tab_util:
             labels={"mmu_id": "MMU", "duration_hours": "Hours", "activity_type": "Activity"},
             color_discrete_map=act_colour_map,
         )
-        fig_util.update_layout(height=450, legend_title="Activity")
+        _dark_chart(fig_util, height=450, legend_title="Activity")
         st.plotly_chart(fig_util, use_container_width=True)
 
     with col_d:
@@ -334,7 +348,7 @@ with tab_util:
             color_discrete_map=act_colour_map,
         )
         fig_donut.update_traces(textposition="inside", textinfo="percent+label")
-        fig_donut.update_layout(height=450, showlegend=False)
+        _dark_chart(fig_donut, height=450, showlegend=False)
         st.plotly_chart(fig_donut, use_container_width=True)
 
     daily = (
@@ -353,7 +367,7 @@ with tab_util:
             labels={"reporting_date": "Date", "duration_hours": "Hours", "activity_type": "Activity"},
             color_discrete_map=act_colour_map,
         )
-        fig_trend.update_layout(height=320, legend_title="Activity")
+        _dark_chart(fig_trend, height=320, legend_title="Activity")
         st.plotly_chart(fig_trend, use_container_width=True)
 
     st.markdown("#### Hours by MMU and activity")
@@ -397,7 +411,7 @@ with tab_prestart:
             color="mmu_id",
             color_discrete_map=mmu_colours,
         )
-        fig_mmu_fault.update_layout(showlegend=False, height=380)
+        _dark_chart(fig_mmu_fault, showlegend=False, height=380)
         st.plotly_chart(fig_mmu_fault, use_container_width=True)
 
     with col_f:
@@ -416,7 +430,7 @@ with tab_prestart:
             color_discrete_map=CATEGORY_COLOURS,
         )
         fig_cat.update_traces(textposition="outside", textinfo="percent+label")
-        fig_cat.update_layout(height=380, showlegend=False)
+        _dark_chart(fig_cat, height=380, showlegend=False)
         st.plotly_chart(fig_cat, use_container_width=True)
 
     st.markdown("#### Most frequently flagged checklist items")
@@ -444,7 +458,7 @@ with tab_prestart:
         labels={"fault_count": "Fault Count", "item_short": "", "checklist_category": "Category"},
         color_discrete_map=CATEGORY_COLOURS,
     )
-    fig_items.update_layout(height=430, legend_title="Category", yaxis=dict(autorange="reversed"))
+    _dark_chart(fig_items, height=430, legend_title="Category", yaxis=dict(autorange="reversed"))
     st.plotly_chart(fig_items, use_container_width=True)
 
     st.markdown("#### Fault records")
