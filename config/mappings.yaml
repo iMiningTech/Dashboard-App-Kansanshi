@@ -1,0 +1,102 @@
+# ============================================================
+# MMU Operations — Column Mapping Config
+# Orica / Kansanshi
+# Populated from CSV inspection on 2026-05-13
+# ============================================================
+
+settings:
+  # IANA timezone — e.g. "Africa/Lusaka". Set null to leave timestamps as-is.
+  timezone: null
+
+  # Flag any single activity longer than this many minutes
+  max_activity_duration_minutes: 240
+
+  # If a shift has no logged END, assume it ends at this time.
+  # Format: "HH:MM"  e.g. "17:00". Set null to cap at max_activity_duration_minutes.
+  default_shift_end_if_missing: null
+
+# ============================================================
+# Source files and column mappings
+# Each value must be the EXACT column header from the Jotform CSV.
+# Set to null to leave that field empty in the output.
+# ============================================================
+
+sources:
+
+  # ── Shift Start / End Log ───────────────────────────────────────────────
+  # Each row is one event (START or END). Sessions are built by pairing them.
+  shift_log:
+    filename: Log_Shift_Start_or_End2026-05-13_19_58_56.csv
+    columns:
+      operator_name: "Full Name"
+      mmu_id: "Fleet No:"
+      timestamp: "Date"                       # User-entered shift time (start or end)
+      shift_event_type: "Shift Start or End?" # Identifies START vs END rows
+    # Values in shift_event_type that mean Shift Start and Shift End
+    start_values: [START, Start]
+    end_values: [END, End]
+
+  # ── Operational Event Log ───────────────────────────────────────────────
+  event_log:
+    filename: Event_Log2026-05-13_19_57_49.csv
+    columns:
+      operator_name: "Full Name"
+      mmu_id: "Fleet No:"
+      timestamp: "Date"                                 # User-entered event timestamp
+      activity_type: "What Are You Logging:"
+      activity_category: "Breakdown Category:"
+      activity_detail: "Additional Information (Optional):"
+      # Uncomment to also pull the "Specify:" free-text field:
+      # activity_detail2: "Specify:"
+
+  # ── Toolbox Talk Log ─────────────────────────────────────────────────────
+  toolbox_talk:
+    filename: Toolbox_Talk_Log2026-05-13_19_58_36.csv
+    columns:
+      operator_name: "Full Name"
+      mmu_id: "Fleet No:"
+      timestamp: "Date"                               # User-entered TBT timestamp
+      activity_detail: "Questions Or Concerns (Optional):"
+
+  # ── MMU Pre-Start Checklist ───────────────────────────────────────────────
+  # Checklist items are auto-detected from the ">> STATUS" column pattern.
+  # Leave checklist_item_columns empty — prestart.py handles detection.
+  prestart_checklist:
+    filename: MMU_-_PRESTART_CHECKLIST2026-05-13_19_59_27.csv
+    columns:
+      mmu_id: "Fleet No:"
+      operator_name: "Full Name"
+      inspection_timestamp: "Date"
+      reporting_date: null   # derived from inspection_timestamp
+      comments: null         # comments are per-item via >> Comment columns
+    checklist_item_columns: []   # leave empty — auto-detected from >> STATUS pattern
+
+# ============================================================
+# Alias tables — normalize inconsistent values
+# ============================================================
+
+# Map any MMU / fleet number variation to a canonical ID.
+# Example:
+#   "Truck 1": "AFBM138"
+#   "afbm 138": "AFBM138"
+mmu_aliases: {}
+
+# Map any operator name variation to canonical form.
+# Example:
+#   "S Makambwe": "Solomon Makambwe"
+operator_aliases: {}
+
+# ============================================================
+# Pre-start fault detection
+# A checklist STATUS is flagged as fault_flag=True if it
+# contains any of these keywords (case-insensitive).
+# ============================================================
+fault_keywords:
+  - fault
+  - fail
+  - defect
+  - broken
+  - damaged
+  - missing
+  - leak
+  - cracked

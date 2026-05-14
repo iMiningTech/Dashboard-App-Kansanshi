@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+.env
+
+# Logs (regenerated on each run)
+output/normalize.log
+
+# Raw Jotform exports — excluded to keep repo size down.
+# The processed output/ CSVs are committed instead.
+input/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,174 @@
+source_table,source_file,source_row_index,exception_reason,field,raw_value,session_id,mmu_id,operator_name,timestamp
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM138,,2026-05-13 06:16:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM129,,2026-05-13 06:03:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM133,,2026-05-12 16:58:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM129,,2026-05-12 07:12:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM138,,2026-05-12 06:20:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM134,,2026-05-11 06:25:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM134,,2026-05-11 06:24:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM129,,2026-05-11 06:07:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM129,,2026-05-10 06:16:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFMMU041D,,2026-05-10 06:09:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM138,,2026-05-10 06:06:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM134,,2026-05-09 06:30:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-05-09 06:18:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM138,,2026-05-09 06:08:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM129,,2026-05-09 06:04:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM147,,2026-05-08 10:18:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM147,,2026-05-08 10:15:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFMMU041D,,2026-05-08 06:51:00
+shift_log,,,No Shift End found for this MMU on this date,,,,BM112,,2026-05-08 05:53:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM148,,2026-05-07 16:10:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM148,,2026-05-07 16:04:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM147,,2026-05-07 08:04:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFMMU041D,,2026-05-07 06:35:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM129,,2026-05-07 06:28:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM147,,2026-05-06 06:43:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-05-06 06:42:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-05-06 06:41:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-05-06 06:40:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-05-06 06:37:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM138,,2026-05-06 06:37:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-05-06 06:35:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFMMU041D,,2026-05-06 06:34:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM129,,2026-05-05 13:25:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM133,,2026-05-05 13:21:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM133,,2026-05-02 06:33:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM138,,2026-04-25 07:57:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFBM129,,2026-04-24 18:29:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-04-24 17:00:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-04-24 16:22:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-04-21 07:15:00
+shift_log,,,No Shift End found for this MMU on this date,,,,BM112,,2026-04-20 10:48:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM129,,2026-04-14 13:11:00
+shift_log,,,No Shift End found after Shift Start timestamp,,,,AFMMU041D,,2026-04-13 10:44:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFMMU042D,,2026-04-09 13:48:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFMMU037,,2026-04-09 13:26:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM129,,2026-04-09 12:11:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM136,,2026-04-09 08:21:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM138,,2026-04-09 08:06:00
+shift_log,,,No Shift End found for this MMU on this date,,,,AFBM129,,2026-04-09 07:10:00
+shift_log,Log_Shift_Start_or_End2026-05-13_19_58_56.csv,110.0,Shift End row has no matching Shift Start,,,,AFBM134,nan,2026-04-09 08:27:00
+shift_log,Log_Shift_Start_or_End2026-05-13_19_58_56.csv,112.0,Shift End row has no matching Shift Start,,,,AFBM133,nan,2026-04-09 08:20:00
+event_log,Event_Log2026-05-13_19_57_49.csv,38.0,No matching shift session,,,,nan,nan,"May 11, 2026 05:03 PM"
+event_log,Event_Log2026-05-13_19_57_49.csv,122.0,No matching shift session,,,,AFBM129,Kamenga,"May 8, 2026 09:15 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,123.0,No matching shift session,,,,AFBM129,Kamenga,"May 8, 2026 09:15 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,125.0,No matching shift session,,,,AFBM129,Kamenga,"May 8, 2026 09:02 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,128.0,No matching shift session,,,,nan,nan,"May 8, 2026 07:32 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,131.0,No matching shift session,,,,AFBM129,Kamenga,"May 8, 2026 06:51 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,163.0,No matching shift session,,,,nan,nan,"May 7, 2026 07:18 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,256.0,No matching shift session,,,,nan,nan,"Apr 14, 2026 01:33 PM"
+event_log,Event_Log2026-05-13_19_57_49.csv,257.0,No matching shift session,,,,nan,nan,"Apr 14, 2026 01:31 PM"
+event_log,Event_Log2026-05-13_19_57_49.csv,258.0,No matching shift session,,,,nan,nan,"Apr 14, 2026 01:03 PM"
+event_log,Event_Log2026-05-13_19_57_49.csv,259.0,No matching shift session,,,,nan,nan,"Apr 10, 2026 11:33 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,260.0,No matching shift session,,,,nan,nan,"Apr 10, 2026 11:27 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,261.0,No matching shift session,,,,nan,nan,"Apr 10, 2026 11:08 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,262.0,No matching shift session,,,,nan,nan,"Apr 10, 2026 08:50 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,263.0,No matching shift session,,,,nan,nan,"Apr 9, 2026 01:57 PM"
+event_log,Event_Log2026-05-13_19_57_49.csv,264.0,No matching shift session,,,,nan,nan,"Apr 9, 2026 01:30 PM"
+event_log,Event_Log2026-05-13_19_57_49.csv,265.0,No matching shift session,,,,nan,nan,"Apr 9, 2026 12:34 PM"
+event_log,Event_Log2026-05-13_19_57_49.csv,266.0,No matching shift session,,,,nan,nan,"Apr 9, 2026 08:19 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,267.0,No matching shift session,,,,nan,nan,"Apr 9, 2026 08:17 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,268.0,No matching shift session,,,,nan,nan,"Apr 9, 2026 07:30 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,269.0,No matching shift session,,,,nan,nan,"Apr 9, 2026 07:28 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,270.0,No matching shift session,,,,nan,nan,"Apr 9, 2026 07:14 AM"
+event_log,Event_Log2026-05-13_19_57_49.csv,271.0,Missing/unparseable timestamp,timestamp,,,nan,nan,nan
+event_log,Event_Log2026-05-13_19_57_49.csv,271.0,No matching shift session,,,,nan,nan,nan
+event_log,Event_Log2026-05-13_19_57_49.csv,272.0,Missing/unparseable timestamp,timestamp,,,nan,nan,nan
+event_log,Event_Log2026-05-13_19_57_49.csv,272.0,No matching shift session,,,,nan,nan,nan
+event_log,Event_Log2026-05-13_19_57_49.csv,273.0,Missing/unparseable timestamp,timestamp,,,nan,nan,nan
+event_log,Event_Log2026-05-13_19_57_49.csv,273.0,No matching shift session,,,,nan,nan,nan
+event_log,Event_Log2026-05-13_19_57_49.csv,274.0,Missing/unparseable timestamp,timestamp,,,nan,nan,nan
+event_log,Event_Log2026-05-13_19_57_49.csv,274.0,No matching shift session,,,,nan,nan,nan
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,4.0,No matching shift session,,,,AFMMU041D,Davison,"May 11, 2026 06:46 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,12.0,No matching shift session,,,,nan,nan,"May 9, 2026 06:14 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,14.0,No matching shift session,,,,nan,nan,"May 9, 2026 06:16 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,18.0,No matching shift session,,,,AFBM129,Kamenga,"May 8, 2026 06:29 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,19.0,No matching shift session,,,,AFBM129,Kamenga,"May 8, 2026 06:26 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,21.0,No matching shift session,,,,nan,nan,"May 8, 2026 05:58 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,24.0,No matching shift session,,,,nan,nan,"May 8, 2026 05:56 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,26.0,No matching shift session,,,,nan,nan,"May 7, 2026 06:38 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,28.0,No matching shift session,,,,nan,nan,"May 7, 2026 06:36 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,29.0,No matching shift session,,,,nan,nan,"May 7, 2026 06:34 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,30.0,No matching shift session,,,,nan,nan,"May 7, 2026 06:27 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,31.0,No matching shift session,,,,nan,nan,"May 7, 2026 06:26 AM"
+toolbox_talk,Toolbox_Talk_Log2026-05-13_19_58_36.csv,41.0,No matching shift session,,,,AFMMU037,Justin James,"May 5, 2026 09:33 PM"
+event_log,,,Duration 243 min exceeds threshold 240 min,,,S0001_20260513_AFBM138_Solomo,AFBM138,,2026-05-13 08:25:00
+event_log,,,Missing Shift End — duration capped,,,S0001_20260513_AFBM138_Solomo,AFBM138,Solomon Makambwe,2026-05-13 16:45:00
+shift_log,,,Missing Shift End — duration capped,,,S0002_20260513_AFBM129_Boaz,AFBM129,Boaz chikwenye,2026-05-13 06:03:00
+event_log,,,Missing Shift End — duration capped,,,S0003_20260512_AFBM133_David,AFBM133,David Bwalya,2026-05-12 18:27:00
+event_log,,,Missing Shift End — duration capped,,,S0004_20260512_AFBM129_Boaz,AFBM129,Boaz chikwenye,2026-05-12 15:29:00
+event_log,,,Missing Shift End — duration capped,,,S0005_20260512_AFBM138_Solomo,AFBM138,Solomon Makambwe,2026-05-12 16:17:00
+shift_log,,,Duration 340 min exceeds threshold 240 min,,,S0006_20260511_AFBM134_Festus,AFBM134,,2026-05-11 07:01:00
+event_log,,,Duration 355 min exceeds threshold 240 min,,,S0006_20260511_AFBM134_Festus,AFBM134,,2026-05-11 12:41:00
+event_log,,,Duration 697 min exceeds threshold 240 min,,,S0007_20260511_AFBM134_Festus,AFBM134,,2026-05-11 07:00:00
+shift_log,,,Missing Shift End — duration capped,,,S0008_20260511_AFBM134_Festus,AFBM134,Festus Chilunda,2026-05-11 06:25:00
+shift_log,,,Missing Shift End — duration capped,,,S0009_20260511_AFBM134_Festus,AFBM134,Festus Chilunda,2026-05-11 06:24:00
+event_log,,,Duration 316 min exceeds threshold 240 min,,,S0010_20260511_AFBM129_Kameng,AFBM129,,2026-05-11 07:45:00
+event_log,,,Missing Shift End — duration capped,,,S0010_20260511_AFBM129_Kameng,AFBM129,Kamenga Alick,2026-05-11 14:11:00
+event_log,,,Missing Shift End — duration capped,,,S0012_20260510_AFBM129_Kameng,AFBM129,Kamenga Alick,2026-05-10 07:15:00
+toolbox_talk,,,Missing Shift End — duration capped,,,S0013_20260510_AFMMU041_Daviso,AFMMU041D,Davison,2026-05-10 06:10:00
+event_log,,,Missing Shift End — duration capped,,,S0014_20260510_AFBM138_David,AFBM138,David Bwalya,2026-05-10 14:54:00
+event_log,,,Duration 655 min exceeds threshold 240 min,,,S0015_20260510_AFBM134_Festus,AFBM134,,2026-05-10 06:15:00
+event_log,,,Duration 509 min exceeds threshold 240 min,,,S0016_20260509_AFBM129_Justin,AFBM129,,2026-05-09 07:49:00
+event_log,,,Duration 255 min exceeds threshold 240 min,,,S0017_20260509_AFBM138_Wilson,AFBM138,,2026-05-09 08:02:00
+event_log,,,Duration 571 min exceeds threshold 240 min,,,S0019_20260509_AFBM134_Festus,AFBM134,,2026-05-09 07:44:00
+shift_log,,,Missing Shift End — duration capped,,,S0020_20260509_AFBM134_Festus,AFBM134,Festus Chilunda,2026-05-09 06:30:00
+event_log,,,Duration 241 min exceeds threshold 240 min,,,S0021_20260509_AFBM136_Hendri,AFBM136,,2026-05-09 08:25:00
+event_log,,,Missing Shift End — duration capped,,,S0021_20260509_AFBM136_Hendri,AFBM136,Hendrix musema,2026-05-09 17:32:00
+shift_log,,,Missing Shift End — duration capped,,,S0023_20260509_AFBM138_David,AFBM138,David Bwalya,2026-05-09 06:08:00
+shift_log,,,Missing Shift End — duration capped,,,S0024_20260509_AFBM129_Kameng,AFBM129,Kamenga Alick,2026-05-09 06:04:00
+toolbox_talk,,,Duration 256 min exceeds threshold 240 min,,,S0025_20260509_AFMMU035_Kelvin,AFMMU035,,2026-05-09 06:13:00
+event_log,,,Duration 488 min exceeds threshold 240 min,,,S0025_20260509_AFMMU035_Kelvin,AFMMU035,,2026-05-09 11:39:00
+event_log,,,Missing Shift End — duration capped,,,S0026_20260508_AFBM147_kabagh,AFBM147,kabaghe sunday,2026-05-08 10:23:00
+shift_log,,,Missing Shift End — duration capped,,,S0027_20260508_AFBM147_Kabagh,AFBM147,Kabaghe Sunday,2026-05-08 10:15:00
+toolbox_talk,,,Duration 1361 min exceeds threshold 240 min,,,S0028_20260508_AFMMU035_Kelvin,AFMMU035,,2026-05-08 07:18:00
+toolbox_talk,,,Missing Shift End — duration capped,,,S0029_20260508_AFMMU041_Taonga,AFMMU041D,Taonga Mtonga,2026-05-08 06:52:00
+event_log,,,Duration 260 min exceeds threshold 240 min,,,S0030_20260508_AFBM134_Festus,AFBM134,,2026-05-08 14:09:00
+toolbox_talk,,,Missing Shift End — duration capped,,,S0032_20260508_BM112_Chimuk,BM112,Chimuka Kasoka,2026-05-08 06:05:00
+shift_log,,,Missing Shift End — duration capped,,,S0034_20260507_AFBM148_Moses,AFBM148,Moses changala,2026-05-07 16:10:00
+shift_log,,,Missing Shift End — duration capped,,,S0035_20260507_AFBM148_Moses,AFBM148,Moses changala,2026-05-07 16:04:00
+shift_log,,,Missing Shift End — duration capped,,,S0036_20260507_AFBM147_Moses,AFBM147,Moses changala,2026-05-07 08:04:00
+toolbox_talk,,,Duration 671 min exceeds threshold 240 min,,,S0038_20260507_AFBM138_David,AFBM138,,2026-05-07 06:39:00
+event_log,,,Duration 1390 min exceeds threshold 240 min,,,S0039_20260507_AFBM134_Festus,AFBM134,,2026-05-07 06:42:00
+event_log,,,Duration 358 min exceeds threshold 240 min,,,S0040_20260507_AFMMU041_Taonga,AFMMU041D,,2026-05-07 09:45:00
+event_log,,,Missing Shift End — duration capped,,,S0040_20260507_AFMMU041_Taonga,AFMMU041D,Taonga mtonga,2026-05-07 15:43:00
+event_log,,,Duration 301 min exceeds threshold 240 min,,,S0041_20260507_AFBM129_Kameng,AFBM129,,2026-05-07 06:30:00
+event_log,,,Duration 308 min exceeds threshold 240 min,,,S0041_20260507_AFBM129_Kameng,AFBM129,,2026-05-07 12:58:00
+event_log,,,Missing Shift End — duration capped,,,S0041_20260507_AFBM129_Kameng,AFBM129,Kamenga,2026-05-07 18:06:00
+event_log,,,Duration 284 min exceeds threshold 240 min,,,S0042_20260507_AFMMU035_Kelvin,AFMMU035,,2026-05-07 07:53:00
+event_log,,,Duration 447 min exceeds threshold 240 min,,,S0042_20260507_AFMMU035_Kelvin,AFMMU035,,2026-05-07 13:43:00
+shift_log,,,Duration 666 min exceeds threshold 240 min,,,S0045_20260506_AFBM138_Makamb,AFBM138,,2026-05-06 07:05:00
+shift_log,,,Missing Shift End — duration capped,,,S0046_20260506_AFBM147_Moses,AFBM147,Moses Changala,2026-05-06 06:43:00
+shift_log,,,Missing Shift End — duration capped,,,S0047_20260506_AFBM136_Moses,AFBM136,Moses,2026-05-06 06:42:00
+shift_log,,,Missing Shift End — duration capped,,,S0048_20260506_AFBM136_Moses,AFBM136,Moses Changala,2026-05-06 06:41:00
+shift_log,,,Missing Shift End — duration capped,,,S0049_20260506_AFBM136_Moses,AFBM136,Moses changala,2026-05-06 06:40:00
+shift_log,,,Missing Shift End — duration capped,,,S0050_20260506_AFBM136_Moses,AFBM136,Moses,2026-05-06 06:37:00
+shift_log,,,Missing Shift End — duration capped,,,S0052_20260506_AFBM138_Makamb,AFBM138,Makambwe Solomon,2026-05-06 06:37:00
+shift_log,,,Missing Shift End — duration capped,,,S0053_20260506_AFBM136_Moses,AFBM136,Moses,2026-05-06 06:35:00
+event_log,,,Missing Shift End — duration capped,,,S0054_20260506_AFMMU041_Rodger,AFMMU041D,Rodgers.B.Mushona,2026-05-06 07:00:00
+event_log,,,Duration 496 min exceeds threshold 240 min,,,S0058_20260505_AFBM129_Justin,AFBM129,,2026-05-05 13:35:00
+event_log,,,Missing Shift End — duration capped,,,S0058_20260505_AFBM129_Justin,AFBM129,Justin James,2026-05-05 22:01:00
+shift_log,,,Missing Shift End — duration capped,,,S0059_20260505_AFBM129_kabagh,AFBM129,kabaghe sunday,2026-05-05 13:25:00
+shift_log,,,Missing Shift End — duration capped,,,S0060_20260505_AFBM133_kabagh,AFBM133,kabaghe sunday,2026-05-05 13:21:00
+shift_log,,,Missing Shift End — duration capped,,,S0062_20260502_AFBM133_Masiye,AFBM133,Masiye Nyambe,2026-05-02 06:33:00
+event_log,,,Duration 272 min exceeds threshold 240 min,,,S0063_20260425_AFBM138_David,AFBM138,,2026-04-25 07:57:00
+event_log,,,Duration 289 min exceeds threshold 240 min,,,S0063_20260425_AFBM138_David,AFBM138,,2026-04-25 12:35:00
+event_log,,,Missing Shift End — duration capped,,,S0063_20260425_AFBM138_David,AFBM138,David Bwalya,2026-04-25 17:24:00
+event_log,,,Missing Shift End — duration capped,,,S0064_20260424_AFBM129_Musema,AFBM129,Musema Hendrix,2026-04-24 18:34:00
+shift_log,,,Missing Shift End — duration capped,,,S0065_20260424_AFBM136_Musema,AFBM136,Musema Hendrix,2026-04-24 17:00:00
+shift_log,,,Missing Shift End — duration capped,,,S0066_20260424_AFBM136_Musema,AFBM136,Musema Hendrix,2026-04-24 16:22:00
+shift_log,,,Duration 20253 min exceeds threshold 240 min,,,S0067_20260422_AFBM134_Johan,AFBM134,,2026-04-22 14:58:00
+event_log,,,Duration 24392 min exceeds threshold 240 min,,,S0068_20260421_AFBM134_Johan,AFBM134,,2026-04-21 07:25:00
+shift_log,,,Missing Shift End — duration capped,,,S0069_20260421_AFBM136_Derric,AFBM136,Derrick,2026-04-21 07:15:00
+event_log,,,Missing Shift End — duration capped,,,S0070_20260420_BM112_Sunday,BM112,Sunday Kabaghe,2026-04-20 10:58:00
+event_log,,,Missing Shift End — duration capped,,,S0071_20260420_AFBM129_Johan,AFBM129,Johan Van Der Merwe,2026-04-20 10:46:00
+shift_log,,,Missing Shift End — duration capped,,,S0073_20260414_AFBM129_nan,AFBM129,nan,2026-04-14 13:11:00
+shift_log,,,Missing Shift End — duration capped,,,S0074_20260413_AFMMU041_nan,AFMMU041D,nan,2026-04-13 10:44:00
+shift_log,,,Duration 611 min exceeds threshold 240 min,,,S0075_20260410_AFMMU041_nan,AFMMU041D,,2026-04-10 08:48:00
+shift_log,,,Missing Shift End — duration capped,,,S0076_20260409_AFMMU042_nan,AFMMU042D,nan,2026-04-09 13:48:00
+shift_log,,,Missing Shift End — duration capped,,,S0077_20260409_AFMMU037_nan,AFMMU037,nan,2026-04-09 13:26:00
+shift_log,,,Missing Shift End — duration capped,,,S0078_20260409_AFBM129_nan,AFBM129,nan,2026-04-09 12:11:00
+shift_log,,,Missing Shift End — duration capped,,,S0079_20260409_AFBM136_nan,AFBM136,nan,2026-04-09 08:21:00
+shift_log,,,Missing Shift End — duration capped,,,S0080_20260409_AFBM138_nan,AFBM138,nan,2026-04-09 08:06:00
+shift_log,,,Missing Shift End — duration capped,,,S0081_20260409_AFBM129_nan,AFBM129,nan,2026-04-09 07:10:00
