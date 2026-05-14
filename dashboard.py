@@ -24,81 +24,76 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── iMining brand palette ─────────────────────────────────────────────────────
-# Yellow 1: #f5911e  Yellow 2: #ffb964  Yellow 3: #ffdca0  Navy: #002841
-# Derived blues added for contrast on the dark background.
+# ── Master colour palette ──────────────────────────────────────────────────────
+# 15 visually distinct colours based on Tableau 10 + extras.
+# Used for any categorical series that doesn't have a semantic mapping.
 MASTER_PALETTE = [
-    "#f5911e",  # Yellow 1 — primary brand orange
-    "#ffb964",  # Yellow 2 — light orange
-    "#ffdca0",  # Yellow 3 — peach/cream
-    "#0a84c8",  # Derived bright blue
-    "#e8710a",  # Burnt orange
-    "#5bb3d8",  # Sky blue
-    "#cc7a18",  # Deep amber
-    "#85c1e9",  # Light steel blue
-    "#d4860f",  # Rich amber
-    "#1a8fc1",  # Medium blue
-    "#ffa040",  # Warm orange
-    "#3da8d8",  # Cornflower blue
-    "#f0c040",  # Golden yellow
-    "#004a7a",  # Mid navy
-    "#e09000",  # Deep gold
+    "#4E79A7",  # steel blue
+    "#F28E2B",  # orange
+    "#E15759",  # coral red
+    "#76B7B2",  # teal
+    "#59A14F",  # green
+    "#EDC948",  # amber
+    "#B07AA1",  # purple
+    "#FF9DA7",  # pink
+    "#9C755F",  # brown
+    "#499894",  # dark teal
+    "#D37295",  # rose
+    "#86BCB6",  # light teal
+    "#FABFD2",  # blush
+    "#E8AC0F",  # gold
+    "#BAB0AC",  # warm grey
 ]
 
 def palette_map(categories) -> dict:
-    """Assign a distinct brand-palette colour to each unique category."""
-    cats = list(dict.fromkeys(categories))
+    """Assign a distinct master-palette colour to each unique category."""
+    cats = list(dict.fromkeys(categories))   # preserve order, deduplicate
     return {c: MASTER_PALETTE[i % len(MASTER_PALETTE)] for i, c in enumerate(cats)}
-
-def _dark_chart(fig, **kwargs):
-    """Apply iMining dark-theme styling to a Plotly figure."""
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,28,51,0.55)",
-        font=dict(color="#ffffff"),
-        legend=dict(bgcolor="rgba(0,0,0,0)"),
-        **kwargs,
-    )
-    return fig
 
 
 # ── Semantic activity colours ─────────────────────────────────────────────────
-# Productive = orange family (brand primary).
-# Movement   = bright blue.
-# Idle/wait  = light blue → peach.
-# Breakdown  = amber (orange replaces red, per brand).
-# Safety     = gold/warm orange.
-# Shift events = blue family.
+# Grouped by meaning: productive = blue/teal, movement = green,
+# idle/wait = grey/brown, maintenance = amber, safety/admin = orange,
+# problems = red/rose.
 ACTIVITY_COLOURS = {
     # Core productive work
-    "Loading Explosives":        "#f5911e",   # Primary brand orange
-    "FQMO - Dipping & Priming":  "#e8710a",   # Burnt orange
-    "Reload":                    "#ffb964",   # Yellow 2 — light orange
+    "Loading Explosives":        "#4E79A7",   # steel blue
+    "FQMO - Dipping & Priming":  "#499894",   # dark teal
+    "Reload":                    "#76B7B2",   # light teal
     # Movement
-    "Travel":                    "#1a8fc1",   # Medium blue
+    "Travel":                    "#59A14F",   # green
     # Idle / waiting
-    "Standby":                   "#85c1e9",   # Light steel blue
-    "Waiting For Explosives":    "#ffdca0",   # Yellow 3 — peach
-    "Waiting For Personnel":     "#cc7a18",   # Deep amber
+    "Standby":                   "#BAB0AC",   # warm grey
+    "Waiting For Explosives":    "#9C755F",   # brown
+    "Waiting For Personnel":     "#B07AA1",   # purple
     # Maintenance / support
-    "Refueling":                 "#3da8d8",   # Cornflower blue
-    "Breakdown":                 "#d4860f",   # Rich amber (replaces red)
+    "Refueling":                 "#EDC948",   # amber
+    "Breakdown":                 "#E15759",   # coral red
     # Safety & admin
-    "Toolbox Talk":              "#ffa040",   # Warm orange
-    "Tool Box Meeting":          "#f0c040",   # Golden yellow
-    "Unsafe Condition":          "#e09000",   # Deep gold
-    "Safety Violation":          "#cc7a18",   # Dark amber (replaces red)
-    # Shift boundaries
-    "Shift Start":               "#0a84c8",   # Bright derived blue
-    "Shift End":                 "#5bb3d8",   # Sky blue
+    "Toolbox Talk":              "#F28E2B",   # orange
+    "Tool Box Meeting":          "#E8AC0F",   # gold
+    "Unsafe Condition":          "#D37295",   # rose
+    "Safety Violation":          "#E15759",   # red (same urgency as Breakdown)
+    # Shift boundaries (shown in timeline only)
+    "Shift Start":               "#86BCB6",   # pale teal
+    "Shift End":                 "#FABFD2",   # blush
 }
 
-# Checklist category colours — four brand-aligned distinct colours
+# Checklist category colours — four distinct, non-activity colours
 CATEGORY_COLOURS = {
-    "IN CAB CHECKS":      "#f5911e",   # Yellow 1 — primary orange
-    "EXTERNAL CHECKS":    "#ffb964",   # Yellow 2 — light orange
-    "QUALITY":            "#0a84c8",   # Derived bright blue
-    "BEFORE DRIVING OFF": "#ffdca0",   # Yellow 3 — peach
+    "IN CAB CHECKS":     "#4E79A7",   # blue
+    "EXTERNAL CHECKS":   "#F28E2B",   # orange
+    "QUALITY":           "#59A14F",   # green
+    "BEFORE DRIVING OFF":"#E15759",   # red
+}
+
+# Shift performance bucket colours
+BUCKET_COLOURS = {
+    "Productive":   "#59A14F",   # green
+    "Movement":     "#4E79A7",   # blue
+    "Downtime":     "#E15759",   # red
+    "Maintenance":  "#EDC948",   # amber
+    "Safety/Admin": "#F28E2B",   # orange
 }
 
 
@@ -213,10 +208,11 @@ st.markdown("---")
 
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab_logout, tab_util, tab_prestart = st.tabs([
-    "🟠  Missing Shift-End Logs",
+tab_logout, tab_util, tab_prestart, tab_perf = st.tabs([
+    "🔴  Missing Shift-End Logs",
     "📊  MMU Utilization",
     "⚠️  Pre-start Faults",
+    "⏱️  Shift Performance",
 ])
 
 
@@ -251,7 +247,7 @@ with tab_logout:
             color="operator_name",
             color_discrete_map=op_colours,
         )
-        _dark_chart(fig_op, showlegend=False, height=400)
+        fig_op.update_layout(showlegend=False, height=400)
         st.plotly_chart(fig_op, use_container_width=True)
 
     with col_b:
@@ -271,7 +267,7 @@ with tab_logout:
             color="reporting_date",
             color_discrete_map={str(k): v for k, v in date_colours.items()},
         )
-        _dark_chart(fig_date, showlegend=False, height=400)
+        fig_date.update_layout(showlegend=False, height=400)
         st.plotly_chart(fig_date, use_container_width=True)
 
     st.markdown("#### Session detail")
@@ -328,7 +324,7 @@ with tab_util:
             labels={"mmu_id": "MMU", "duration_hours": "Hours", "activity_type": "Activity"},
             color_discrete_map=act_colour_map,
         )
-        _dark_chart(fig_util, height=450, legend_title="Activity")
+        fig_util.update_layout(height=450, legend_title="Activity")
         st.plotly_chart(fig_util, use_container_width=True)
 
     with col_d:
@@ -348,7 +344,7 @@ with tab_util:
             color_discrete_map=act_colour_map,
         )
         fig_donut.update_traces(textposition="inside", textinfo="percent+label")
-        _dark_chart(fig_donut, height=450, showlegend=False)
+        fig_donut.update_layout(height=450, showlegend=False)
         st.plotly_chart(fig_donut, use_container_width=True)
 
     daily = (
@@ -367,7 +363,7 @@ with tab_util:
             labels={"reporting_date": "Date", "duration_hours": "Hours", "activity_type": "Activity"},
             color_discrete_map=act_colour_map,
         )
-        _dark_chart(fig_trend, height=320, legend_title="Activity")
+        fig_trend.update_layout(height=320, legend_title="Activity")
         st.plotly_chart(fig_trend, use_container_width=True)
 
     st.markdown("#### Hours by MMU and activity")
@@ -411,7 +407,7 @@ with tab_prestart:
             color="mmu_id",
             color_discrete_map=mmu_colours,
         )
-        _dark_chart(fig_mmu_fault, showlegend=False, height=380)
+        fig_mmu_fault.update_layout(showlegend=False, height=380)
         st.plotly_chart(fig_mmu_fault, use_container_width=True)
 
     with col_f:
@@ -430,7 +426,7 @@ with tab_prestart:
             color_discrete_map=CATEGORY_COLOURS,
         )
         fig_cat.update_traces(textposition="outside", textinfo="percent+label")
-        _dark_chart(fig_cat, height=380, showlegend=False)
+        fig_cat.update_layout(height=380, showlegend=False)
         st.plotly_chart(fig_cat, use_container_width=True)
 
     st.markdown("#### Most frequently flagged checklist items")
@@ -458,7 +454,7 @@ with tab_prestart:
         labels={"fault_count": "Fault Count", "item_short": "", "checklist_category": "Category"},
         color_discrete_map=CATEGORY_COLOURS,
     )
-    _dark_chart(fig_items, height=430, legend_title="Category", yaxis=dict(autorange="reversed"))
+    fig_items.update_layout(height=430, legend_title="Category", yaxis=dict(autorange="reversed"))
     st.plotly_chart(fig_items, use_container_width=True)
 
     st.markdown("#### Fault records")
@@ -485,6 +481,155 @@ with tab_prestart:
             fault_detail.to_csv(index=False).encode(),
             "prestart_faults.csv", "text/csv",
         )
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 4 — SHIFT PERFORMANCE
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_perf:
+    st.subheader("Shift Start Times & Productive vs Downtime")
+
+    ACTIVITY_BUCKET = {
+        "Loading Explosives":        "Productive",
+        "FQMO - Dipping & Priming":  "Productive",
+        "Reload":                    "Productive",
+        "Travel":                    "Movement",
+        "Standby":                   "Downtime",
+        "Waiting For Explosives":    "Downtime",
+        "Waiting For Personnel":     "Downtime",
+        "Refueling":                 "Maintenance",
+        "Breakdown":                 "Maintenance",
+        "Toolbox Talk":              "Safety/Admin",
+        "Tool Box Meeting":          "Safety/Admin",
+        "Unsafe Condition":          "Safety/Admin",
+        "Safety Violation":          "Safety/Admin",
+    }
+
+    perf = session_summary.dropna(subset=["shift_start"]).copy()
+    perf["start_hour_dec"] = perf["shift_start"].dt.hour + perf["shift_start"].dt.minute / 60
+    perf["start_time_str"] = perf["shift_start"].dt.strftime("%H:%M")
+    perf["date_str"] = perf["reporting_date"].astype(str)
+
+    # ── Shift start times ─────────────────────────────────────────────────────
+    st.markdown("### Shift Start Times")
+    st.markdown(
+        "Each point is one shift session. The Y-axis shows when the operator logged Shift Start — "
+        "low = early start, high = late start."
+    )
+
+    op_start_colours = palette_map(perf["operator_name"])
+    fig_starts = px.scatter(
+        perf.sort_values("reporting_date"),
+        x="date_str",
+        y="start_hour_dec",
+        color="operator_name",
+        color_discrete_map=op_start_colours,
+        hover_data={"start_time_str": True, "start_hour_dec": False, "date_str": False},
+        labels={
+            "date_str": "Date",
+            "start_hour_dec": "Shift Start Time",
+            "operator_name": "Operator",
+            "start_time_str": "Start Time",
+        },
+        title="Shift Start Time by Operator and Date",
+        height=420,
+    )
+    hour_ticks = list(range(4, 14))
+    fig_starts.update_layout(
+        yaxis=dict(
+            tickvals=hour_ticks,
+            ticktext=[f"{h:02d}:00" for h in hour_ticks],
+            title="Start Time",
+        )
+    )
+    st.plotly_chart(fig_starts, use_container_width=True)
+
+    start_summary = (
+        perf.groupby("operator_name")
+        .agg(
+            Sessions=("session_id", "count"),
+            Earliest=("start_time_str", "min"),
+            Latest=("start_time_str", "max"),
+            avg_h=("start_hour_dec", "mean"),
+        )
+        .reset_index()
+        .rename(columns={"operator_name": "Operator"})
+    )
+    start_summary["Avg Start"] = start_summary["avg_h"].apply(
+        lambda h: f"{int(h):02d}:{int((h % 1) * 60):02d}"
+    )
+    st.dataframe(
+        start_summary[["Operator", "Sessions", "Earliest", "Latest", "Avg Start"]],
+        use_container_width=True, hide_index=True,
+    )
+
+    st.markdown("---")
+
+    # ── Productive vs Downtime ────────────────────────────────────────────────
+    st.markdown("### Productive Time vs Downtime")
+    st.markdown(
+        "Activities grouped into: **Productive** (loading, FQMO, reload), "
+        "**Movement** (travel), **Downtime** (standby, waiting), "
+        "**Maintenance** (refueling, breakdown), **Safety/Admin** (toolbox talks). "
+        "Dead Time shows unlogged minutes between Shift Start and the first logged activity."
+    )
+
+    bucketed = activity_tl.copy()
+    bucketed["bucket"] = bucketed["activity_type"].map(ACTIVITY_BUCKET).fillna("Other")
+
+    bucket_by_mmu = (
+        bucketed.groupby(["mmu_id", "bucket"])["duration_hours"]
+        .sum()
+        .reset_index()
+    )
+    fig_buckets = px.bar(
+        bucket_by_mmu,
+        x="mmu_id",
+        y="duration_hours",
+        color="bucket",
+        title="Time Breakdown by MMU",
+        labels={"mmu_id": "MMU", "duration_hours": "Hours", "bucket": "Category"},
+        color_discrete_map=BUCKET_COLOURS,
+        height=420,
+    )
+    fig_buckets.update_layout(legend_title="Category")
+    st.plotly_chart(fig_buckets, use_container_width=True)
+
+    # ── Dead time (shift start → first logged activity) ───────────────────────
+    st.markdown("#### Dead Time — Shift Start to First Logged Activity")
+    st.markdown(
+        "Time between logging Shift Start and the first activity entry. "
+        "A large bar means the operator was on site but nothing was recorded."
+    )
+
+    first_acts = (
+        activity_tl
+        .groupby("session_id")["start_timestamp"]
+        .min()
+        .reset_index(name="first_activity_ts")
+    )
+    gap_df = perf.merge(first_acts, on="session_id", how="left")
+    gap_df["dead_time_min"] = (
+        (gap_df["first_activity_ts"] - gap_df["shift_start"])
+        .dt.total_seconds() / 60
+    ).clip(lower=0).round(1)
+    gap_df["label"] = gap_df["operator_name"] + "  (" + gap_df["date_str"] + ")"
+    gap_df = gap_df.dropna(subset=["dead_time_min"]).sort_values("dead_time_min", ascending=True)
+
+    gap_colours = palette_map(gap_df["operator_name"])
+    fig_gap = px.bar(
+        gap_df,
+        x="dead_time_min",
+        y="label",
+        color="operator_name",
+        color_discrete_map=gap_colours,
+        orientation="h",
+        title="Dead Time per Shift Session (minutes from Shift Start to first activity)",
+        labels={"dead_time_min": "Minutes", "label": "", "operator_name": "Operator"},
+        height=max(350, len(gap_df) * 30),
+    )
+    fig_gap.update_layout(showlegend=False)
+    st.plotly_chart(fig_gap, use_container_width=True)
 
 
 # ── Footer ────────────────────────────────────────────────────────────────────
