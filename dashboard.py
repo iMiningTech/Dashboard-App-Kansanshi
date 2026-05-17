@@ -64,8 +64,8 @@ st.markdown(
             background-color: #0082CA !important;
             border-color: #0082CA !important;
         }
-        [data-testid="stSidebar"] [data-testid="stSlider"] [class*="emotion"] div[style*="background"] {
-            background-color: #0082CA !important;
+        [data-testid="stSidebar"] [data-baseweb="slider"] div[style*="background"] {
+            background: #0082CA !important;
         }
         /* Caption / small text */
         [data-testid="stSidebar"] small,
