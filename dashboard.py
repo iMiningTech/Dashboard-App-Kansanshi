@@ -27,12 +27,31 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        #MainMenu          {visibility: hidden;}
-        footer             {visibility: hidden;}
-        header             {visibility: hidden;}
+        /* ── Hide Streamlit chrome ── */
+        #MainMenu                      {visibility: hidden;}
+        footer                         {visibility: hidden;}
+        header                         {visibility: hidden;}
         [data-testid="stToolbar"]      {display: none;}
         [data-testid="stDecoration"]   {display: none;}
         [data-testid="stStatusWidget"] {display: none;}
+
+        /* ── Sidebar skin — white + Orica blue ── */
+        [data-testid="stSidebar"] {
+            background-color: #FFFFFF !important;
+            border-right: 3px solid #0082CA;
+        }
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] span,
+        [data-testid="stSidebar"] label {
+            color: #003087 !important;
+        }
+        [data-testid="stSidebar"] hr {
+            border-color: #0082CA !important;
+            opacity: 0.4;
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -132,7 +151,10 @@ with st.spinner("Loading data…"):
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🚛 Kansanshi MMU Ops")
+    logo_path = PROJECT_ROOT / "assets" / "orica_logo.png"
+    if logo_path.exists():
+        st.image(str(logo_path), width=140)
+    st.markdown("## Kansanshi MMU Ops")
     st.markdown("---")
 
     all_dates = sorted(d for d in timeline_raw["reporting_date"].dropna().unique())

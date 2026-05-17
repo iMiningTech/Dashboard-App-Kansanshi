@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir \"c:\\\\Users\\\\justi\\\\OneDrive\\\\Documents\\\\Software GIT\\\\Orica-Kansanshi-Ops-Forms\\\\Dashboard App - Kansanshi\\\\assets\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\justi\\OneDrive\\Documents\\Software GIT\\Orica-Kansanshi-Ops-Forms\\Dashboard App - Kansanshi"
+    ]
+  }
+}
