@@ -189,6 +189,45 @@ st.title("MMU Operations Dashboard")
 st.markdown(f"**Kansanshi Mining — data period: {date_range[0]} to {date_range[1]}**")
 st.markdown("---")
 
+# ── Site Status ───────────────────────────────────────────────────────────────
+st.markdown("### Site Status")
+st.caption(f"Last logged activity per MMU — most recent within selected date range.")
+
+if tl.empty:
+    st.info("No data for the selected filters.")
+else:
+    latest_per_mmu = (
+        tl.dropna(subset=["start_timestamp"])
+        .sort_values("start_timestamp", ascending=False)
+        .groupby("mmu_id", as_index=False)
+        .first()
+    )[["mmu_id", "operator_name", "activity_type", "start_timestamp", "session_id", "reporting_date"]]
+    latest_per_mmu["active"] = ~latest_per_mmu["session_id"].isin(sessions_with_end)
+
+    prestart_keys = set(zip(prestart_raw["mmu_id"], prestart_raw["reporting_date"]))
+    latest_per_mmu["has_prestart"] = latest_per_mmu.apply(
+        lambda r: (r["mmu_id"], r["reporting_date"]) in prestart_keys, axis=1
+    )
+    latest_per_mmu = latest_per_mmu.sort_values("mmu_id").reset_index(drop=True)
+
+    cols_per_row = 4
+    for i in range(0, len(latest_per_mmu), cols_per_row):
+        chunk = latest_per_mmu.iloc[i:i + cols_per_row]
+        card_cols = st.columns(cols_per_row)
+        for card_col, (_, row) in zip(card_cols, chunk.iterrows()):
+            with card_col:
+                with st.container(border=True):
+                    ts = row["start_timestamp"]
+                    ts_str = ts.strftime("%H:%M · %d %b") if pd.notna(ts) else "—"
+                    badge = "🟢 Active" if row["active"] else "⚫ Shift Ended"
+                    prestart_badge = "" if row["has_prestart"] else " &nbsp; ⚠️ No Prestart"
+                    st.markdown(f"**{row['mmu_id']}** &nbsp; {badge}{prestart_badge}")
+                    st.markdown(f"👤 &nbsp; {row['operator_name'] or '—'}")
+                    st.markdown(f"**{row['activity_type']}**")
+                    st.caption(ts_str)
+
+st.markdown("---")
+
 total_sessions     = session_summary["session_id"].nunique()
 active_mmus        = tl["mmu_id"].nunique()
 missing_logout_n   = len(sessions_no_end)
