@@ -44,13 +44,26 @@ st.markdown(
         [data-testid="stSidebar"] h2,
         [data-testid="stSidebar"] h3,
         [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] span,
         [data-testid="stSidebar"] label {
             color: #003087 !important;
         }
         [data-testid="stSidebar"] hr {
             border-color: #0082CA !important;
             opacity: 0.4;
+        }
+        /* Multiselect selected-item tags */
+        [data-testid="stSidebar"] [data-baseweb="tag"] {
+            background-color: #0082CA !important;
+            border: none !important;
+        }
+        [data-testid="stSidebar"] [data-baseweb="tag"] span {
+            color: #FFFFFF !important;
+        }
+        /* Caption / small text */
+        [data-testid="stSidebar"] small,
+        [data-testid="stSidebar"] .stCaption {
+            color: #003087 !important;
+            opacity: 0.7;
         }
     </style>
     """,
