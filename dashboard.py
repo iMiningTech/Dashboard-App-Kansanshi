@@ -64,8 +64,8 @@ st.markdown(
             background-color: #0082CA !important;
             border-color: #0082CA !important;
         }
-        /* Slider filled track — inline background set by React */
-        [data-testid="stSidebar"] [data-testid="stSlider"] div[style*="background"] {
+        /* Slider filled track — target the exact orange RGB Streamlit inlines */
+        *[style*="rgb(245, 145"] {
             background: #0082CA !important;
             background-color: #0082CA !important;
         }
