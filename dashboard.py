@@ -59,13 +59,10 @@ st.markdown(
         [data-testid="stSidebar"] [data-baseweb="tag"] span {
             color: #FFFFFF !important;
         }
-        /* Slider — thumb and filled track */
+        /* Slider thumb dots */
         [data-testid="stSidebar"] [role="slider"] {
             background-color: #0082CA !important;
             border-color: #0082CA !important;
-        }
-        [data-testid="stSidebar"] [data-baseweb="slider"] div[style*="background"] {
-            background: #0082CA !important;
         }
         /* Caption / small text */
         [data-testid="stSidebar"] small,
