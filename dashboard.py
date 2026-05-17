@@ -24,6 +24,20 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.markdown(
+    """
+    <style>
+        #MainMenu          {visibility: hidden;}
+        footer             {visibility: hidden;}
+        header             {visibility: hidden;}
+        [data-testid="stToolbar"]      {display: none;}
+        [data-testid="stDecoration"]   {display: none;}
+        [data-testid="stStatusWidget"] {display: none;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ── Master colour palette ──────────────────────────────────────────────────────
 # 15 visually distinct colours based on Tableau 10 + extras.
 # Used for any categorical series that doesn't have a semantic mapping.
