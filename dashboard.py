@@ -64,6 +64,11 @@ st.markdown(
             background-color: #0082CA !important;
             border-color: #0082CA !important;
         }
+        /* Slider filled track — inline background set by React */
+        [data-testid="stSidebar"] [data-testid="stSlider"] div[style*="background"] {
+            background: #0082CA !important;
+            background-color: #0082CA !important;
+        }
         /* Caption / small text */
         [data-testid="stSidebar"] small,
         [data-testid="stSidebar"] .stCaption {
