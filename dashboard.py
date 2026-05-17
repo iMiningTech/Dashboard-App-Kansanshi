@@ -11,7 +11,6 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-import streamlit.components.v1 as components
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).parent
@@ -65,12 +64,11 @@ st.markdown(
             background-color: #0082CA !important;
             border-color: #0082CA !important;
         }
-        /* Slider filled track — target the exact orange RGB Streamlit inlines */
-        *[style*="rgb(245, 145"] {
+        /* Slider filled track — Emotion class visible in inspector */
+        [data-testid="stSidebar"] .e2ups023 > div {
             background: #0082CA !important;
             background-color: #0082CA !important;
         }
-
         /* Caption / small text */
         [data-testid="stSidebar"] small,
         [data-testid="stSidebar"] .stCaption {
@@ -80,41 +78,6 @@ st.markdown(
     </style>
     """,
     unsafe_allow_html=True,
-)
-
-# MutationObserver injected via iframe to fix React re-rendering the slider
-# track inline style back to the theme primaryColor on every render cycle.
-components.html(
-    """
-    <script>
-    (function() {
-        function fixOrange(root) {
-            root.querySelectorAll('[style*="rgb(245, 145"]').forEach(function(el) {
-                el.style.background = '#0082CA';
-                el.style.backgroundColor = '#0082CA';
-            });
-        }
-        var doc = window.parent.document;
-        fixOrange(doc);
-        new MutationObserver(function(mutations) {
-            mutations.forEach(function(m) {
-                if (m.type === 'attributes' && m.attributeName === 'style') {
-                    var s = m.target.style;
-                    if (s.background && s.background.includes('245, 145')) {
-                        s.background = '#0082CA';
-                    }
-                } else if (m.type === 'childList') {
-                    fixOrange(doc);
-                }
-            });
-        }).observe(doc.body, {
-            childList: true, subtree: true,
-            attributes: true, attributeFilter: ['style']
-        });
-    })();
-    </script>
-    """,
-    height=0,
 )
 
 # ── Master colour palette ──────────────────────────────────────────────────────
