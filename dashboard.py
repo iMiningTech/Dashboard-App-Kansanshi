@@ -247,11 +247,12 @@ st.markdown("---")
 
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab_logout, tab_util, tab_prestart, tab_perf = st.tabs([
+tab_logout, tab_util, tab_prestart, tab_perf, tab_timeline = st.tabs([
     "🔴  Missing Shift-End Logs",
     "📊  MMU Utilization",
     "⚠️  Pre-start Faults",
     "⏱️  Shift Performance",
+    "📅  Shift Timeline",
 ])
 
 
@@ -669,6 +670,87 @@ with tab_perf:
     )
     fig_gap.update_layout(showlegend=False)
     st.plotly_chart(fig_gap, use_container_width=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 5 — SHIFT TIMELINE
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_timeline:
+    if len(selected_mmus) != 1:
+        st.info("Select a **single MMU** in the sidebar to view the shift timeline.")
+    else:
+        mmu_single = selected_mmus[0]
+        st.subheader(f"Shift Timeline — {mmu_single}")
+        st.markdown(
+            "Each bar represents one logged activity. The horizontal axis is wall-clock time "
+            "from Shift Start to Shift End (or last logged event)."
+        )
+
+        mmu_tl = tl[tl["mmu_id"] == mmu_single].dropna(subset=["start_timestamp"])
+        available_dates = sorted(mmu_tl["reporting_date"].dropna().unique())
+
+        if not available_dates:
+            st.info("No data for this MMU in the selected date range.")
+        else:
+            selected_day = st.selectbox(
+                "Select date",
+                options=available_dates,
+                index=len(available_dates) - 1,
+                format_func=str,
+                key="timeline_date",
+            )
+
+            day_tl = mmu_tl[mmu_tl["reporting_date"] == selected_day].copy()
+
+            # Reconstruct missing end timestamps from duration
+            missing_end = day_tl["end_timestamp"].isna() & day_tl["duration_minutes"].notna()
+            day_tl.loc[missing_end, "end_timestamp"] = (
+                day_tl.loc[missing_end, "start_timestamp"]
+                + pd.to_timedelta(day_tl.loc[missing_end, "duration_minutes"], unit="m")
+            )
+            day_tl = day_tl.dropna(subset=["end_timestamp"]).sort_values("start_timestamp")
+
+            if day_tl.empty:
+                st.info("No complete activity records for this day.")
+            else:
+                tl_colour_map = {
+                    act: ACTIVITY_COLOURS.get(act, MASTER_PALETTE[i % len(MASTER_PALETTE)])
+                    for i, act in enumerate(day_tl["activity_type"].unique())
+                }
+
+                fig_tl = px.timeline(
+                    day_tl,
+                    x_start="start_timestamp",
+                    x_end="end_timestamp",
+                    y="mmu_id",
+                    color="activity_type",
+                    color_discrete_map=tl_colour_map,
+                    title=f"{mmu_single}  ·  {selected_day}",
+                    labels={"activity_type": "Activity", "mmu_id": ""},
+                    hover_data={
+                        "start_timestamp": True,
+                        "end_timestamp": True,
+                        "duration_minutes": True,
+                        "mmu_id": False,
+                    },
+                )
+                fig_tl.update_layout(height=220, legend_title="Activity", xaxis_title="Time")
+                st.plotly_chart(fig_tl, use_container_width=True)
+
+                # Activity breakdown for the day
+                st.markdown("#### Activity breakdown")
+                breakdown = (
+                    day_tl[~day_tl["activity_type"].isin(["Shift Start", "Shift End"])]
+                    .groupby("activity_type")["duration_minutes"]
+                    .sum()
+                    .round(0)
+                    .astype(int)
+                    .reset_index()
+                    .rename(columns={"activity_type": "Activity", "duration_minutes": "Minutes"})
+                    .sort_values("Minutes", ascending=False)
+                    .reset_index(drop=True)
+                )
+                st.dataframe(breakdown, hide_index=True, use_container_width=True)
 
 
 # ── Footer ────────────────────────────────────────────────────────────────────
