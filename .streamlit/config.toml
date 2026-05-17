@@ -5,7 +5,7 @@ gatherUsageStats = false
 headless = true
 
 [theme]
-primaryColor       = "#f5911e"
+primaryColor       = "#0082CA"
 backgroundColor    = "#001e33"
 secondaryBackgroundColor = "#002841"
 textColor          = "#ffffff"
