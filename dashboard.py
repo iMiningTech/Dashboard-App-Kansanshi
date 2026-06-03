@@ -30,15 +30,12 @@ st.markdown(
         /* ── Hide Streamlit chrome ── */
         #MainMenu                      {visibility: hidden;}
         footer                         {visibility: hidden;}
-        header                         {visibility: hidden;}
-        [data-testid="collapsedControl"],
-        [data-testid="stSidebarCollapsedControl"] {
-            visibility: visible !important;
-            z-index: 999999 !important;
-        }
         [data-testid="stToolbar"]      {display: none;}
         [data-testid="stDecoration"]   {display: none;}
         [data-testid="stStatusWidget"] {display: none;}
+
+        /* Force sidebar open — hide the collapse button */
+        [data-testid="stSidebarCollapseButton"] {display: none !important;}
 
         /* ── Sidebar skin — white + Orica blue ── */
         [data-testid="stSidebar"] {
