@@ -55,9 +55,12 @@ def parse_timestamp(value, timezone: Optional[str] = None) -> pd.Timestamp:
 
     val_str = str(value).strip()
 
-    # Let pandas try first (handles ISO-8601, many locale variants)
+    # ISO dates (YYYY-MM-DD…) must NOT use dayfirst: pandas would read them as
+    # YYYY-DD-MM and swap month/day (e.g. "2026-06-07" -> 6 July). dayfirst is
+    # only for ambiguous day-first strings like "07/06/2026" (legacy CSV exports).
+    iso_like = bool(re.match(r"^\d{4}-\d{2}-\d{2}", val_str))
     try:
-        ts = pd.to_datetime(val_str, dayfirst=True)
+        ts = pd.to_datetime(val_str, dayfirst=not iso_like)
         if timezone:
             ts = ts.tz_localize(timezone) if ts.tzinfo is None else ts.tz_convert(timezone)
         return ts
