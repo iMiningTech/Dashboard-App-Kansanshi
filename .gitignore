@@ -4,6 +4,9 @@ __pycache__/
 *.pyc
 .env
 
+# Streamlit secrets (AWS keys etc.) — NEVER commit
+.streamlit/secrets.toml
+
 # Logs (regenerated on each run)
 output/normalize.log
 

@@ -156,14 +156,41 @@ BUCKET_COLOURS = {
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
-@st.cache_data
-def load_data():
-    ts_cols = ["start_timestamp", "end_timestamp", "shift_start_timestamp", "shift_end_timestamp"]
-    timeline = pd.read_csv(OUTPUT_DIR / "normalized_activity_timeline.csv",
-                           parse_dates=ts_cols, low_memory=False)
-    prestart = pd.read_csv(OUTPUT_DIR / "normalized_prestart_report.csv",
-                           parse_dates=["inspection_timestamp"], low_memory=False)
-    exceptions = pd.read_csv(OUTPUT_DIR / "data_quality_exceptions.csv", low_memory=False)
+# Source toggle: "aws" (live pipeline) or "csv" (legacy batch files).
+# Set via env DATA_SOURCE / DATA_WINDOW_DAYS, or .streamlit secrets [data].
+import os as _os
+
+def _data_settings():
+    source = _os.environ.get("DATA_SOURCE", "csv").lower()
+    window = int(_os.environ.get("DATA_WINDOW_DAYS", "7"))
+    try:
+        if "data" in st.secrets:                       # type: ignore[attr-defined]
+            source = str(st.secrets["data"].get("source", source)).lower()
+            window = int(st.secrets["data"].get("window_days", window))
+    except Exception:
+        pass
+    return source, window
+
+DATA_SOURCE, DATA_WINDOW_DAYS = _data_settings()
+TS_COLS = ["start_timestamp", "end_timestamp", "shift_start_timestamp", "shift_end_timestamp"]
+
+
+@st.cache_data(ttl=300)
+def load_data(window_days: int = DATA_WINDOW_DAYS):
+    if DATA_SOURCE == "aws":
+        from src.aws_source import load_from_aws
+        timeline, prestart, exceptions = load_from_aws(window_days=window_days)
+        for c in TS_COLS:
+            if c in timeline.columns:
+                timeline[c] = pd.to_datetime(timeline[c], errors="coerce")
+        if "inspection_timestamp" in prestart.columns:
+            prestart["inspection_timestamp"] = pd.to_datetime(prestart["inspection_timestamp"], errors="coerce")
+    else:
+        timeline = pd.read_csv(OUTPUT_DIR / "normalized_activity_timeline.csv",
+                               parse_dates=TS_COLS, low_memory=False)
+        prestart = pd.read_csv(OUTPUT_DIR / "normalized_prestart_report.csv",
+                               parse_dates=["inspection_timestamp"], low_memory=False)
+        exceptions = pd.read_csv(OUTPUT_DIR / "data_quality_exceptions.csv", low_memory=False)
 
     timeline["reporting_date"] = pd.to_datetime(timeline["reporting_date"], errors="coerce").dt.date
     prestart["reporting_date"] = pd.to_datetime(prestart["reporting_date"], errors="coerce").dt.date
