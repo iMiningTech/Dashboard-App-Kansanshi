@@ -1,0 +1,28 @@
+name: Precompute dashboard datasets
+
+# Publishes the amalgamated datasets to S3 on a schedule, so the data API
+# serves them fast. Reuses the proven Python pipeline.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch: {}        # allow manual runs
+
+jobs:
+  precompute:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      DATA_BUCKET: orica-kansanshi-jotform-prod-432046692351
+      SUBMISSIONS_TABLE: orica-kansanshi-jotform-submissions-prod
+      WINDOWS: "7d,30d,90d,mtd"
+      # Store these in the repo's GitHub Actions Secrets (Settings → Secrets):
+      AWS_ACCESS_KEY_ID: ${{ secrets.PRECOMPUTE_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PRECOMPUTE_AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python scripts/precompute_to_s3.py

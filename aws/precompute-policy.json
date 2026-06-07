@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSubmissions",
+      "Effect": "Allow",
+      "Action": ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:Scan", "dynamodb:DescribeTable"],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:432046692351:table/orica-kansanshi-jotform-submissions-prod",
+        "arn:aws:dynamodb:us-east-1:432046692351:table/orica-kansanshi-jotform-submissions-prod/index/*"
+      ]
+    },
+    {
+      "Sid": "ReadCleanWriteDashboard",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::orica-kansanshi-jotform-prod-432046692351/*"
+    },
+    {
+      "Sid": "ListBucket",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::orica-kansanshi-jotform-prod-432046692351"
+    }
+  ]
+}
