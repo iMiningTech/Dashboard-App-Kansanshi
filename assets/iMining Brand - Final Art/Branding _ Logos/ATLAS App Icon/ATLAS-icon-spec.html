@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>iMining ATLAS — Icon Specification</title>
+<style>
+  :root {
+    --navy: #002741;
+    --orange: #F7941D;
+    --peach: #FCBA63;
+    --cream: #FFDAA2;
+    --ink: #1a2433;
+    --muted: #6b7785;
+    --line: #e6eaee;
+    --bg: #f6f7f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px 56px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  h1 {
+    font-size: 34px;
+    margin: 0 0 6px;
+    letter-spacing: -0.015em;
+  }
+  h1 span { color: var(--orange); }
+  .lead {
+    color: var(--muted);
+    margin: 0 0 40px;
+    font-size: 16px;
+    max-width: 740px;
+  }
+  h2 {
+    font-size: 22px;
+    margin: 48px 0 16px;
+    letter-spacing: -0.01em;
+    border-top: 1px solid var(--line);
+    padding-top: 32px;
+  }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 24px 0 12px;
+    font-weight: 600;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 36px;
+    align-items: center;
+    background: white;
+    padding: 36px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+  }
+  .hero-icon {
+    width: 240px;
+    height: 240px;
+    border-radius: 52px;
+    overflow: hidden;
+    box-shadow: 0 24px 48px -16px rgba(0, 39, 65, 0.35);
+  }
+  .hero-icon img { width: 100%; height: 100%; display: block; }
+  .hero h2 {
+    border: none;
+    padding: 0;
+    margin: 0 0 10px;
+    font-size: 26px;
+  }
+  .hero p { margin: 0; color: var(--muted); }
+
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .swatch {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .swatch .chip { height: 90px; }
+  .swatch .info { padding: 10px 14px; }
+  .swatch .name { font-size: 13px; font-weight: 600; }
+  .swatch .hex { font-size: 12px; color: var(--muted); font-family: "SF Mono", Menlo, monospace; }
+
+  .size-strip {
+    display: flex;
+    align-items: flex-end;
+    gap: 28px;
+    padding: 28px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow-x: auto;
+  }
+  .size-item { text-align: center; flex-shrink: 0; }
+  .size-item img {
+    display: block;
+    margin: 0 auto 8px;
+  }
+  .size-item .label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .context-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+  }
+  .context-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .context-card h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+
+  /* iOS home screen mock */
+  .ios-mock {
+    background: linear-gradient(180deg, #b8c8d8 0%, #6c8aa8 100%);
+    border-radius: 14px;
+    padding: 24px 32px;
+  }
+  .ios-row { display: flex; gap: 24px; align-items: flex-start; }
+  .ios-app { text-align: center; }
+  .ios-app img { width: 60px; height: 60px; border-radius: 14px; display: block; }
+  .ios-app .name { color: white; font-size: 11px; margin-top: 6px; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+
+  /* Browser tab mock */
+  .tab-mock {
+    background: #e6e9ee;
+    border-radius: 8px 8px 0 0;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 2px solid white;
+  }
+  .tab-mock img { width: 16px; height: 16px; }
+  .tab-mock span { font-size: 12px; color: #2a3340; }
+  .tab-body { background: white; height: 60px; border-radius: 0 0 8px 8px; }
+
+  /* Files list */
+  .files {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 8px 0;
+  }
+  .file-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    align-items: center;
+    padding: 10px 20px;
+    gap: 14px;
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--line);
+  }
+  .file-row:last-child { border-bottom: none; }
+  .file-row .ic { width: 24px; height: 24px; background: var(--navy); border-radius: 5px; color: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+  .file-row .name { font-family: "SF Mono", Menlo, monospace; font-size: 12.5px; }
+  .file-row .note { color: var(--muted); font-size: 12px; }
+
+  pre {
+    background: #0f1924;
+    color: #e6eaee;
+    padding: 18px 22px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  code { font-family: "SF Mono", Menlo, monospace; }
+  .pre-label { font-size: 12px; color: var(--muted); margin: 18px 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+
+  <h1>iMining <span>ATLAS</span> — App Icon</h1>
+  <p class="lead">
+    Asset management with maintenance logging and dashboards. The icon evolves the existing iMining "i" — the dot becomes a globe with site pins, the stem stays identical to the parent brand.
+  </p>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-icon"><img src="exports/icon-512.png" alt="ATLAS icon"></div>
+    <div>
+      <h2>The mark</h2>
+      <p>One primary asset highlighted in upper-left (the focal point), three supporting sites distributed across the globe. The slanted stem bottom is preserved from the original iMining 'i' geometry.</p>
+    </div>
+  </div>
+
+  <h2>Brand palette</h2>
+  <div class="palette">
+    <div class="swatch"><div class="chip" style="background:#002741"></div><div class="info"><div class="name">Navy</div><div class="hex">#002741</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#F7941D"></div><div class="info"><div class="name">Orange</div><div class="hex">#F7941D</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#FCBA63"></div><div class="info"><div class="name">Peach</div><div class="hex">#FCBA63</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#FFDAA2"></div><div class="info"><div class="name">Cream</div><div class="hex">#FFDAA2</div></div></div>
+  </div>
+
+  <h2>Size system</h2>
+  <p style="color: var(--muted); margin: 0 0 18px;">
+    The icon uses two source SVGs depending on display size. At <strong>16/32/48px</strong> the simplified variant (single prominent pin) is used so the icon stays legible. From <strong>64px up</strong> the full 4-pin master takes over.
+  </p>
+
+  <div class="size-strip">
+    <div class="size-item"><img src="exports/favicon-16.png" style="width:16px;height:16px"><div class="label">16</div></div>
+    <div class="size-item"><img src="exports/favicon-32.png" style="width:32px;height:32px"><div class="label">32</div></div>
+    <div class="size-item"><img src="exports/favicon-48.png" style="width:48px;height:48px"><div class="label">48</div></div>
+    <div class="size-item"><img src="exports/icon-64.png" style="width:64px;height:64px"><div class="label">64</div></div>
+    <div class="size-item"><img src="exports/icon-96.png" style="width:96px;height:96px"><div class="label">96</div></div>
+    <div class="size-item"><img src="exports/icon-128.png" style="width:128px;height:128px"><div class="label">128</div></div>
+    <div class="size-item"><img src="exports/icon-180.png" style="width:160px;height:160px"><div class="label">180 · apple-touch</div></div>
+    <div class="size-item"><img src="exports/icon-192.png" style="width:192px;height:192px"><div class="label">192 · PWA</div></div>
+  </div>
+
+  <h2>In context</h2>
+  <div class="context-grid">
+
+    <div class="context-card">
+      <h4>iOS home screen</h4>
+      <div class="ios-mock">
+        <div class="ios-row">
+          <div class="ios-app">
+            <img src="exports/icon-180.png">
+            <div class="name">ATLAS</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="context-card">
+      <h4>Browser tab</h4>
+      <div class="tab-mock">
+        <img src="exports/favicon-32.png">
+        <span>iMining ATLAS · Assets</span>
+      </div>
+      <div class="tab-body"></div>
+    </div>
+
+    <div class="context-card">
+      <h4>Android maskable</h4>
+      <div style="display:flex; gap:14px; align-items:center; justify-content:center; padding: 20px;">
+        <!-- Show the maskable inside a circular clip (Android Pie-style mask) -->
+        <div style="width:96px; height:96px; border-radius:50%; overflow:hidden; box-shadow: 0 6px 18px rgba(0,0,0,0.15);">
+          <img src="exports/icon-maskable-192.png" style="width:100%; height:100%;">
+        </div>
+        <!-- Squircle mask example -->
+        <div style="width:96px; height:96px; border-radius:24px; overflow:hidden; box-shadow: 0 6px 18px rgba(0,0,0,0.15);">
+          <img src="exports/icon-maskable-192.png" style="width:100%; height:100%;">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <h2>Files produced</h2>
+
+  <h3>Source SVGs (in this folder)</h3>
+  <div class="files">
+    <div class="file-row"><div class="ic">S</div><div><div class="name">atlas-icon-master.svg</div><div class="note">The primary mark — 4 pins, full detail, navy background. Use for everything 64px and up.</div></div><div></div></div>
+    <div class="file-row"><div class="ic">S</div><div><div class="name">atlas-icon-no-bg.svg</div><div class="note">Same as master, transparent background. Use over light or alternate-color surfaces.</div></div><div></div></div>
+    <div class="file-row"><div class="ic">S</div><div><div class="name">atlas-icon-favicon.svg</div><div class="note">Simplified — globe ring + 1 center pin + stem. Holds up at 16/32/48px.</div></div><div></div></div>
+    <div class="file-row"><div class="ic">S</div><div><div class="name">atlas-icon-maskable.svg</div><div class="note">For Android PWA. Background fills edge-to-edge; content sits in the inner 80% safe zone.</div></div><div></div></div>
+  </div>
+
+  <h3>Exports (in exports/ subfolder)</h3>
+  <div class="files">
+    <div class="file-row"><div class="ic">F</div><div><div class="name">favicon.ico</div><div class="note">Multi-resolution (16+32+48) for legacy browsers.</div></div><div></div></div>
+    <div class="file-row"><div class="ic">F</div><div><div class="name">favicon-16.png · favicon-32.png · favicon-48.png</div><div class="note">From simplified source.</div></div><div></div></div>
+    <div class="file-row"><div class="ic">P</div><div><div class="name">icon-64.png … icon-1024.png</div><div class="note">64, 96, 128, 152 (iPad), 167 (iPad Pro), 180 (Apple touch), 192 (PWA), 256, 512 (PWA large), 1024 (App Store).</div></div><div></div></div>
+    <div class="file-row"><div class="ic">M</div><div><div class="name">icon-maskable-192.png · icon-maskable-512.png</div><div class="note">Android PWA maskable variants.</div></div><div></div></div>
+  </div>
+
+  <h2>Web integration snippets</h2>
+
+  <div class="pre-label">HTML &lt;head&gt; — Favicons & Apple touch icon</div>
+<pre><code>&lt;!-- Modern browsers --&gt;
+&lt;link rel="icon" type="image/svg+xml" href="/atlas-icon-favicon.svg"&gt;
+&lt;link rel="icon" type="image/png" sizes="32x32" href="/exports/favicon-32.png"&gt;
+&lt;link rel="icon" type="image/png" sizes="16x16" href="/exports/favicon-16.png"&gt;
+
+&lt;!-- Legacy --&gt;
+&lt;link rel="shortcut icon" href="/exports/favicon.ico"&gt;
+
+&lt;!-- iOS --&gt;
+&lt;link rel="apple-touch-icon" sizes="180x180" href="/exports/icon-180.png"&gt;
+
+&lt;!-- PWA --&gt;
+&lt;link rel="manifest" href="/manifest.json"&gt;
+&lt;meta name="theme-color" content="#002741"&gt;</code></pre>
+
+  <div class="pre-label">manifest.json — PWA</div>
+<pre><code>{
+  "name": "iMining ATLAS",
+  "short_name": "ATLAS",
+  "description": "Asset management, maintenance history, and dashboards.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#002741",
+  "theme_color": "#002741",
+  "icons": [
+    { "src": "/exports/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/exports/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/exports/icon-maskable-192.png", "sizes": "192x192",
+      "type": "image/png", "purpose": "maskable" },
+    { "src": "/exports/icon-maskable-512.png", "sizes": "512x512",
+      "type": "image/png", "purpose": "maskable" }
+  ]
+}</code></pre>
+
+</body>
+</html>

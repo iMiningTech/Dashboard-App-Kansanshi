@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Brand tokens (PLACEHOLDER) ──────────────────────────────────────────────
+   Swap these for the real iMining/Orica CI when it lands. RGB triplets so
+   Tailwind's <alpha-value> works. */
+:root {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --bg: 247 248 250;        /* page background */
+  --surface: 255 255 255;   /* cards */
+  --border: 226 230 236;
+  --fg: 17 24 39;           /* text */
+  --muted: 107 114 128;     /* secondary text */
+
+  --brand: 14 116 144;      /* PLACEHOLDER teal — replace with brand primary */
+  --accent: 234 88 12;      /* PLACEHOLDER orange — replace with accent */
+
+  --ok: 22 163 74;
+  --warn: 217 119 6;
+  --danger: 220 38 38;
+}
+
+html, body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: var(--font-sans);
+}
+
+* { box-sizing: border-box; }

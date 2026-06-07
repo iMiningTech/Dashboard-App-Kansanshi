@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="nav-inventory">
+  <title>Inventory</title>
+  <!-- 3D box, isometric-ish — top face lighter as accent -->
+  <!-- Top face -->
+  <path d="M 24 6 L 41 14 L 24 22 L 7 14 Z" fill="#FCBA63"/>
+  <!-- Right face (darker side) -->
+  <path d="M 41 14 L 41 33 L 24 41 L 24 22 Z" fill="#F7941D"/>
+  <!-- Left face (slightly varied for depth) -->
+  <path d="M 7 14 L 7 33 L 24 41 L 24 22 Z" fill="#F7941D" opacity="0.82"/>
+</svg>

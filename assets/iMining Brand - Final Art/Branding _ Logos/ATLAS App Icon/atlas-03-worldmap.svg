@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" id="atlas-worldmap">
+  <title>ATLAS — Continental World Map</title>
+  <rect width="512" height="512" rx="96" fill="#002741"/>
+
+  <!-- Globe ring -->
+  <circle cx="256" cy="192" r="108" stroke="#F7941D" stroke-width="14" fill="none"/>
+
+  <!-- Equator (subtle) -->
+  <line x1="148" y1="192" x2="364" y2="192" stroke="#F7941D" stroke-width="3" opacity="0.35" stroke-linecap="round"/>
+
+  <!-- Abstracted continents (designed to fit inside the r=100 area) -->
+  <g fill="#F7941D">
+    <!-- North America -->
+    <path d="M 188 132
+             C 178 148 178 168 188 178
+             C 198 184 202 196 200 208
+             C 198 218 188 222 180 218
+             C 170 208 168 192 172 174
+             C 174 158 180 142 188 132 Z"/>
+    <!-- Central America connector -->
+    <path d="M 200 218
+             C 206 222 210 230 208 238
+             C 204 244 200 242 198 236
+             C 196 228 198 222 200 218 Z"/>
+    <!-- South America -->
+    <path d="M 210 238
+             C 222 240 226 256 222 270
+             C 218 278 210 276 208 268
+             C 204 256 206 244 210 238 Z"/>
+    <!-- Europe -->
+    <path d="M 246 138
+             C 258 134 270 140 270 150
+             C 268 158 258 162 250 158
+             C 244 154 244 144 246 138 Z"/>
+    <!-- Africa -->
+    <path d="M 250 168
+             C 268 166 276 184 272 204
+             C 268 224 258 240 250 244
+             C 240 240 238 222 244 204
+             C 246 188 246 176 250 168 Z"/>
+    <!-- Asia -->
+    <path d="M 286 138
+             C 312 134 332 144 332 158
+             C 328 168 312 170 296 168
+             C 286 168 282 158 282 152
+             C 282 146 284 140 286 138 Z"/>
+    <!-- India / SE Asia -->
+    <path d="M 296 178
+             C 308 176 314 188 310 198
+             C 304 204 298 200 296 192
+             C 294 186 294 180 296 178 Z"/>
+    <!-- Australia / Oceania -->
+    <path d="M 304 226
+             C 320 222 330 232 326 240
+             C 320 246 308 244 304 238
+             C 302 234 302 230 304 226 Z"/>
+  </g>
+
+  <!-- Site marker (preserved satellite from original 'i') -->
+  <circle cx="324" cy="134" r="11" fill="#FCBA63"/>
+
+  <!-- Stem -->
+  <path d="M 232 322 L 280 322 L 280 446 Q 280 470 256 470 Q 232 470 232 446 Z" fill="#F7941D"/>
+</svg>

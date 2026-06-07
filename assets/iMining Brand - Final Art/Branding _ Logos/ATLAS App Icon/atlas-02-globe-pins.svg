@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" id="atlas-globe-pins">
+  <title>ATLAS — Globe with Site Pins</title>
+  <rect width="512" height="512" rx="96" fill="#002741"/>
+
+  <!-- The dot of the 'i' as a globe dotted with assets/sites -->
+  <g transform="translate(256 192)">
+    <!-- Globe outline -->
+    <circle cx="0" cy="0" r="108" stroke="#F7941D" stroke-width="14" fill="none"/>
+    <!-- Equator (kept subtle so pins read clearly) -->
+    <line x1="-108" y1="0" x2="108" y2="0" stroke="#F7941D" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+    <!-- Meridian (subtle) -->
+    <ellipse cx="0" cy="0" rx="40" ry="108" stroke="#F7941D" stroke-width="3" fill="none" opacity="0.35"/>
+
+    <!-- Asset / site pins — kept inside the globe and prominent -->
+    <circle cx="-48" cy="-40" r="13" fill="#FCBA63"/>
+    <circle cx="28"  cy="-58" r="11" fill="#FFDAA2"/>
+    <circle cx="58"  cy="-12" r="14" fill="#F7941D"/>
+    <circle cx="-28" cy="28"  r="12" fill="#FCBA63"/>
+    <circle cx="42"  cy="50"  r="13" fill="#FCBA63"/>
+    <circle cx="-62" cy="48"  r="10" fill="#FFDAA2"/>
+  </g>
+
+  <!-- Stem -->
+  <path d="M 232 322 L 280 322 L 280 446 Q 280 470 256 470 Q 232 470 232 446 Z" fill="#F7941D"/>
+</svg>

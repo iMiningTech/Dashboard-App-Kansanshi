@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" id="atlas-icon-no-bg">
+  <title>iMining ATLAS — App Icon (transparent)</title>
+  <desc>Same as master, transparent background. Use over light or alternate-color surfaces.</desc>
+
+  <g transform="translate(256 192)">
+    <circle cx="0" cy="0" r="108" fill="none" stroke="#F7941D" stroke-width="14"/>
+    <line x1="-108" y1="0" x2="108" y2="0"
+          stroke="#F7941D" stroke-width="3.5" stroke-linecap="round" opacity="0.45"/>
+    <ellipse cx="0" cy="0" rx="40" ry="108"
+             stroke="#F7941D" stroke-width="3" fill="none" opacity="0.4"/>
+    <circle cx="-34" cy="-46" r="17" fill="#F7941D"/>
+    <circle cx="-34" cy="-46" r="7"  fill="#FFDAA2"/>
+    <circle cx="48"  cy="-22" r="13" fill="#FCBA63"/>
+    <circle cx="-48" cy="38"  r="13" fill="#FCBA63"/>
+    <circle cx="32"  cy="54"  r="13" fill="#FCBA63"/>
+  </g>
+
+  <path d="M 232 322 L 280 322 L 280 470
+           C 253.5 470, 232 448.5, 232 422
+           L 232 322 Z"
+        fill="#F7941D"/>
+</svg>

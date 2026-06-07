@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ATLAS — Icon Concept Comparison</title>
+<style>
+  :root {
+    --navy: #002741;
+    --orange: #F7941D;
+    --peach: #FCBA63;
+    --cream: #FFDAA2;
+    --ink: #1a2433;
+    --muted: #6b7785;
+    --line: #e6eaee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f6f7f9;
+    color: var(--ink);
+  }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 32px; font-size: 15px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 24px;
+  }
+  .card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card h2 { font-size: 18px; margin: 0 0 4px; }
+  .card .tag { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 18px; }
+  .preview-large {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 28px;
+    overflow: hidden;
+    background: var(--navy);
+    margin-bottom: 18px;
+  }
+  .preview-large img { width: 100%; height: 100%; display: block; }
+  .sizes {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    padding: 14px 16px;
+    background: #fafbfc;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+  }
+  .size-item { text-align: center; }
+  .size-item img {
+    display: block;
+    border-radius: 6px;
+    margin-bottom: 6px;
+  }
+  .size-item .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .size-32  img { width: 32px;  height: 32px;  border-radius: 6px; }
+  .size-64  img { width: 64px;  height: 64px;  border-radius: 10px; }
+  .size-192 img { width: 96px;  height: 96px;  border-radius: 16px; }
+
+  .desc { margin: 16px 0 0; font-size: 13.5px; line-height: 1.5; color: #3a4451; }
+
+  .footer-note {
+    margin-top: 40px;
+    padding: 20px 24px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #3a4451;
+  }
+  .footer-note strong { color: var(--ink); }
+  .swatch-row { display: flex; gap: 8px; margin-top: 10px; }
+  .swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.08); }
+</style>
+</head>
+<body>
+  <h1>ATLAS — App Icon Concepts</h1>
+  <p class="sub">Five directions, each derived from the existing iMining "i". Compare the large preview against the smaller sizes (PWA 192, app icon 64, favicon 32) to see how each holds up.</p>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2>01 · Wireframe Globe</h2>
+      <div class="tag">Technical · clean · iconic</div>
+      <div class="preview-large"><img src="atlas-01-globe-wireframe-512.png" alt=""></div>
+      <div class="sizes">
+        <div class="size-item size-192"><img src="atlas-01-globe-wireframe-192.png"><div class="label">PWA · 192</div></div>
+        <div class="size-item size-64"><img  src="atlas-01-globe-wireframe-64.png"><div  class="label">App · 64</div></div>
+        <div class="size-item size-32"><img  src="atlas-01-globe-wireframe-32.png"><div  class="label">Favicon · 32</div></div>
+      </div>
+      <p class="desc">The dot becomes a wireframe globe. Equator + meridian + tropic lines, with one small accent dot that echoes the satellite in the existing 'i'. Reads cleanly at every size. Most "atlas" of the bunch.</p>
+    </div>
+
+    <div class="card">
+      <h2>02 · Globe with Site Pins</h2>
+      <div class="tag">Asset management · sites · operational</div>
+      <div class="preview-large"><img src="atlas-02-globe-pins-512.png" alt=""></div>
+      <div class="sizes">
+        <div class="size-item size-192"><img src="atlas-02-globe-pins-192.png"><div class="label">PWA · 192</div></div>
+        <div class="size-item size-64"><img  src="atlas-02-globe-pins-64.png"><div  class="label">App · 64</div></div>
+        <div class="size-item size-32"><img  src="atlas-02-globe-pins-32.png"><div  class="label">Favicon · 32</div></div>
+      </div>
+      <p class="desc">Globe ring with six site pins inside. Directly speaks to the product: sites, assets, locations dashboarded together. The pin cluster echoes the dotted arc in the original 'i'.</p>
+    </div>
+
+    <div class="card">
+      <h2>03 · Continental Map</h2>
+      <div class="tag">Classic atlas · geographic</div>
+      <div class="preview-large"><img src="atlas-03-worldmap-512.png" alt=""></div>
+      <div class="sizes">
+        <div class="size-item size-192"><img src="atlas-03-worldmap-192.png"><div class="label">PWA · 192</div></div>
+        <div class="size-item size-64"><img  src="atlas-03-worldmap-64.png"><div  class="label">App · 64</div></div>
+        <div class="size-item size-32"><img  src="atlas-03-worldmap-32.png"><div  class="label">Favicon · 32</div></div>
+      </div>
+      <p class="desc">Abstracted continents inside the globe ring. Most literally "atlas". Loses some clarity at small sizes — the continents blur together. Recommend only if your product strongly evokes geography.</p>
+    </div>
+
+    <div class="card">
+      <h2>04 · Star Atlas (Constellation)</h2>
+      <div class="tag">Premium · abstract · ATLAS-shaped</div>
+      <div class="preview-large"><img src="atlas-04-constellation-512.png" alt=""></div>
+      <div class="sizes">
+        <div class="size-item size-192"><img src="atlas-04-constellation-192.png"><div class="label">PWA · 192</div></div>
+        <div class="size-item size-64"><img  src="atlas-04-constellation-64.png"><div  class="label">App · 64</div></div>
+        <div class="size-item size-32"><img  src="atlas-04-constellation-32.png"><div  class="label">Favicon · 32</div></div>
+      </div>
+      <p class="desc">The stars connect to form an "A" — for ATLAS. Premium feel, very distinctive. The dotted constellation echoes the dot pattern in the original 'i' more literally than any other concept.</p>
+    </div>
+
+    <div class="card">
+      <h2>05 · Asset Network Hub</h2>
+      <div class="tag">Dashboards · systems · hybrid</div>
+      <div class="preview-large"><img src="atlas-05-network-512.png" alt=""></div>
+      <div class="sizes">
+        <div class="size-item size-192"><img src="atlas-05-network-192.png"><div class="label">PWA · 192</div></div>
+        <div class="size-item size-64"><img  src="atlas-05-network-64.png"><div  class="label">App · 64</div></div>
+        <div class="size-item size-32"><img  src="atlas-05-network-32.png"><div  class="label">Favicon · 32</div></div>
+      </div>
+      <p class="desc">Central hub with spokes radiating to asset nodes, inside the globe boundary. Strongest match to "asset management with dashboards across sites". The most product-specific concept.</p>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    <strong>Brand palette used (from your CI):</strong>
+    <div class="swatch-row">
+      <div class="swatch" style="background:#002741" title="Navy #002741"></div>
+      <div class="swatch" style="background:#F7941D" title="Orange #F7941D"></div>
+      <div class="swatch" style="background:#FCBA63" title="Peach #FCBA63"></div>
+      <div class="swatch" style="background:#FFDAA2" title="Cream #FFDAA2"></div>
+    </div>
+    <p style="margin: 14px 0 0;">All five icons preserve the iMining 'i' stem and dot proportions. The dot is reinterpreted; the stem stays consistent across every variant.</p>
+  </div>
+</body>
+</html>

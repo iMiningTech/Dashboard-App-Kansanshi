@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>iMining ATLAS — Navigation Icons</title>
+<style>
+  :root {
+    --navy: #002741;
+    --orange: #F7941D;
+    --peach: #FCBA63;
+    --cream: #FFDAA2;
+    --ink: #1a2433;
+    --muted: #6b7785;
+    --line: #e6eaee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px 56px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f6f7f9;
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  h1 { font-size: 32px; margin: 0 0 6px; letter-spacing: -0.015em; }
+  h1 span { color: var(--orange); }
+  .lead { color: var(--muted); margin: 0 0 40px; font-size: 16px; max-width: 720px; }
+  h2 {
+    font-size: 20px; margin: 48px 0 16px; letter-spacing: -0.01em;
+    border-top: 1px solid var(--line); padding-top: 28px;
+  }
+  h2:first-of-type { border: none; padding-top: 0; }
+
+  /* Hero icon grid */
+  .icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .icon-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 16px 18px;
+    text-align: center;
+  }
+  .icon-card .preview {
+    width: 80px; height: 80px;
+    margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .icon-card .preview img { width: 64px; height: 64px; }
+  .icon-card .name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .icon-card .desc { font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+  /* Sidebar mock */
+  .sidebar-mock {
+    background: var(--navy);
+    width: 260px;
+    border-radius: 16px;
+    padding: 22px 14px;
+    box-shadow: 0 12px 32px -8px rgba(0,39,65,0.25);
+  }
+  .sidebar-mock .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 10px 22px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 14px;
+  }
+  .sidebar-mock .brand img { width: 36px; height: 36px; border-radius: 8px; }
+  .sidebar-mock .brand .t { color: white; }
+  .sidebar-mock .brand .t .top { font-weight: 700; font-size: 14px; letter-spacing: 0.02em; }
+  .sidebar-mock .brand .t .sub { font-size: 11px; color: rgba(255,255,255,0.6); }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: rgba(255,255,255,0.72);
+    font-size: 13.5px;
+    cursor: default;
+    margin-bottom: 2px;
+  }
+  .nav-item img { width: 22px; height: 22px; }
+  .nav-item.active {
+    background: rgba(247,148,29,0.14);
+    color: white;
+  }
+  .nav-item.active::after {
+    content: '';
+    margin-left: auto;
+    width: 4px; height: 16px;
+    background: var(--orange);
+    border-radius: 2px;
+  }
+
+  /* Size strip */
+  .size-strip {
+    display: grid;
+    grid-template-columns: 140px repeat(3, 1fr);
+    gap: 12px;
+    padding: 18px 24px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .size-strip .label { font-weight: 600; font-size: 13px; }
+  .size-cell { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+  .size-cell img.s24 { width: 24px; height: 24px; }
+  .size-cell img.s32 { width: 32px; height: 32px; }
+  .size-cell img.s48 { width: 48px; height: 48px; }
+
+  /* Code blocks */
+  pre {
+    background: #0f1924;
+    color: #e6eaee;
+    padding: 18px 22px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    overflow-x: auto;
+    line-height: 1.55;
+  }
+  .pre-label { font-size: 12px; color: var(--muted); margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .layout-split {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+</style>
+</head>
+<body>
+
+  <h1>iMining <span>ATLAS</span> — Navigation Icons</h1>
+  <p class="lead">
+    Seven duotone icons matched to the ATLAS app icon palette. Designed for ~24-32px in a side navigation,
+    each holds together down to 24px with a clear, distinct silhouette.
+  </p>
+
+  <h2>The set</h2>
+  <div class="icon-grid">
+    <div class="icon-card"><div class="preview"><img src="exports/nav-01-dashboard-96.png"></div>
+      <div class="name">Dashboard</div><div class="desc">Overview · KPIs · recent activity</div></div>
+    <div class="icon-card"><div class="preview"><img src="exports/nav-02-assets-96.png"></div>
+      <div class="name">Assets</div><div class="desc">Master register · latest status</div></div>
+    <div class="icon-card"><div class="preview"><img src="exports/nav-03-sites-96.png"></div>
+      <div class="name">Sites</div><div class="desc">Locations · facilities · field</div></div>
+    <div class="icon-card"><div class="preview"><img src="exports/nav-04-maintenance-96.png"></div>
+      <div class="name">Maintenance</div><div class="desc">History · QC logs · breakdowns</div></div>
+    <div class="icon-card"><div class="preview"><img src="exports/nav-05-tickets-96.png"></div>
+      <div class="name">Tickets</div><div class="desc">Service requests · issues · jobs</div></div>
+    <div class="icon-card"><div class="preview"><img src="exports/nav-06-inventory-96.png"></div>
+      <div class="name">Inventory</div><div class="desc">Parts · spares · stock</div></div>
+    <div class="icon-card"><div class="preview"><img src="exports/nav-07-reports-96.png"></div>
+      <div class="name">Reports</div><div class="desc">Analytics · exports · breakdowns</div></div>
+  </div>
+
+  <h2>In context — sidebar navigation</h2>
+  <div class="layout-split">
+    <div class="sidebar-mock">
+      <div class="brand">
+        <img src="../exports/icon-180.png" alt="">
+        <div class="t">
+          <div class="top">ATLAS</div>
+          <div class="sub">Asset Management</div>
+        </div>
+      </div>
+      <div class="nav-item"><img src="exports/nav-01-dashboard-48.png"> Dashboard</div>
+      <div class="nav-item active"><img src="exports/nav-02-assets-48.png"> Assets</div>
+      <div class="nav-item"><img src="exports/nav-03-sites-48.png"> Sites</div>
+      <div class="nav-item"><img src="exports/nav-04-maintenance-48.png"> Maintenance</div>
+      <div class="nav-item"><img src="exports/nav-05-tickets-48.png"> Tickets</div>
+      <div class="nav-item"><img src="exports/nav-06-inventory-48.png"> Inventory</div>
+      <div class="nav-item"><img src="exports/nav-07-reports-48.png"> Reports</div>
+    </div>
+    <div style="color: var(--muted); font-size: 13.5px;">
+      <p style="margin-top: 0;"><strong style="color: var(--ink);">Active state pattern:</strong> tinted orange background (<code>rgba(247,148,29,0.14)</code>), white label, plus a 4px orange accent bar on the right edge of the row. The icon itself does not change between states — the surrounding chrome carries the state.</p>
+      <p><strong style="color: var(--ink);">Icon size in nav:</strong> 22px is the sweet spot for desktop sidebars. Use the 48px PNG and let the browser downscale, or use the SVG directly (recommended) which stays crisp at any size.</p>
+      <p><strong style="color: var(--ink);">Recommended order:</strong> Dashboard, Assets, Sites, Maintenance, Tickets, Inventory, Reports. This follows the natural data flow — overview, the "what", the "where", the "history", the "to-do", the "stock", the "results".</p>
+    </div>
+  </div>
+
+  <h2>Size verification (24 / 32 / 48 px)</h2>
+  <div class="size-strip" style="background: #fafbfc;">
+    <div class="label" style="color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Section</div>
+    <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;">24px (compact)</div>
+    <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;">32px (standard)</div>
+    <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;">48px (large)</div>
+  </div>
+  <div class="size-strip"><div class="label">Dashboard</div>
+    <div class="size-cell"><img src="exports/nav-01-dashboard-24.png" class="s24"></div>
+    <div class="size-cell"><img src="exports/nav-01-dashboard-32.png" class="s32"></div>
+    <div class="size-cell"><img src="exports/nav-01-dashboard-48.png" class="s48"></div>
+  </div>
+  <div class="size-strip"><div class="label">Assets</div>
+    <div class="size-cell"><img src="exports/nav-02-assets-24.png" class="s24"></div>
+    <div class="size-cell"><img src="exports/nav-02-assets-32.png" class="s32"></div>
+    <div class="size-cell"><img src="exports/nav-02-assets-48.png" class="s48"></div>
+  </div>
+  <div class="size-strip"><div class="label">Sites</div>
+    <div class="size-cell"><img src="exports/nav-03-sites-24.png" class="s24"></div>
+    <div class="size-cell"><img src="exports/nav-03-sites-32.png" class="s32"></div>
+    <div class="size-cell"><img src="exports/nav-03-sites-48.png" class="s48"></div>
+  </div>
+  <div class="size-strip"><div class="label">Maintenance</div>
+    <div class="size-cell"><img src="exports/nav-04-maintenance-24.png" class="s24"></div>
+    <div class="size-cell"><img src="exports/nav-04-maintenance-32.png" class="s32"></div>
+    <div class="size-cell"><img src="exports/nav-04-maintenance-48.png" class="s48"></div>
+  </div>
+  <div class="size-strip"><div class="label">Tickets</div>
+    <div class="size-cell"><img src="exports/nav-05-tickets-24.png" class="s24"></div>
+    <div class="size-cell"><img src="exports/nav-05-tickets-32.png" class="s32"></div>
+    <div class="size-cell"><img src="exports/nav-05-tickets-48.png" class="s48"></div>
+  </div>
+  <div class="size-strip"><div class="label">Inventory</div>
+    <div class="size-cell"><img src="exports/nav-06-inventory-24.png" class="s24"></div>
+    <div class="size-cell"><img src="exports/nav-06-inventory-32.png" class="s32"></div>
+    <div class="size-cell"><img src="exports/nav-06-inventory-48.png" class="s48"></div>
+  </div>
+  <div class="size-strip"><div class="label">Reports</div>
+    <div class="size-cell"><img src="exports/nav-07-reports-24.png" class="s24"></div>
+    <div class="size-cell"><img src="exports/nav-07-reports-32.png" class="s32"></div>
+    <div class="size-cell"><img src="exports/nav-07-reports-48.png" class="s48"></div>
+  </div>
+
+  <h2>Integration</h2>
+
+  <div class="pre-label">React component (recommended — uses SVG directly)</div>
+<pre><code>// icons/NavIcon.tsx
+import Dashboard   from '@/assets/nav/nav-01-dashboard.svg';
+import Assets      from '@/assets/nav/nav-02-assets.svg';
+import Sites       from '@/assets/nav/nav-03-sites.svg';
+import Maintenance from '@/assets/nav/nav-04-maintenance.svg';
+import Tickets     from '@/assets/nav/nav-05-tickets.svg';
+import Inventory   from '@/assets/nav/nav-06-inventory.svg';
+import Reports     from '@/assets/nav/nav-07-reports.svg';
+
+export const NAV_ICONS = {
+  dashboard: Dashboard,
+  assets: Assets,
+  sites: Sites,
+  maintenance: Maintenance,
+  tickets: Tickets,
+  inventory: Inventory,
+  reports: Reports,
+} as const;</code></pre>
+
+  <div class="pre-label">Sidebar usage</div>
+<pre><code>&lt;nav className="atlas-sidebar"&gt;
+  &lt;NavLink to="/dashboard"&gt;&lt;img src={NAV_ICONS.dashboard}/&gt; Dashboard&lt;/NavLink&gt;
+  &lt;NavLink to="/assets"&gt;&lt;img src={NAV_ICONS.assets}/&gt; Assets&lt;/NavLink&gt;
+  ...
+&lt;/nav&gt;</code></pre>
+
+</body>
+</html>

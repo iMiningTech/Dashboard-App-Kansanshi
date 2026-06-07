@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="nav-maintenance">
+  <title>Maintenance</title>
+  <!-- Open-end spanner: wide head with deep U-notch jaw + narrower handle -->
+  <g transform="translate(24 24) rotate(-30)">
+    <!-- Wrench body: head (wider) + handle (narrower) as one continuous path -->
+    <path d="M -9 -20
+             L -3 -20
+             L -3 -12
+             L  3 -12
+             L  3 -20
+             L  9 -20
+             L  9 -8
+             L  3 -8
+             L  3  16
+             Q  3  18,  0  18
+             Q -3  18, -3  16
+             L -3 -8
+             L -9 -8
+             Z"
+          fill="#F7941D"/>
+    <!-- Hex bolt gripped in the jaw -->
+    <path d="M 0 -19
+             L 2.5 -17.5
+             L 2.5 -14.5
+             L 0 -13
+             L -2.5 -14.5
+             L -2.5 -17.5 Z"
+          fill="#FCBA63"/>
+  </g>
+</svg>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="nav-reports">
+  <title>Reports</title>
+  <!-- Ascending bar chart — first (lowest) bar is accent peach -->
+  <rect x="8"  y="28" width="9" height="14" rx="1.5" fill="#FCBA63"/>
+  <rect x="19.5" y="18" width="9" height="24" rx="1.5" fill="#F7941D"/>
+  <rect x="31" y="8"  width="9" height="34" rx="1.5" fill="#F7941D"/>
+</svg>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" id="atlas-network">
+  <title>ATLAS — Asset Network Hub (globe + nodes hybrid)</title>
+  <rect width="512" height="512" rx="96" fill="#002741"/>
+
+  <!-- Outer ring (the globe / boundary) -->
+  <circle cx="256" cy="192" r="108" stroke="#F7941D" stroke-width="12" fill="none" opacity="0.95"/>
+
+  <!-- Equator (subtle) -->
+  <line x1="158" y1="192" x2="354" y2="192" stroke="#F7941D" stroke-width="3" opacity="0.45" stroke-linecap="round"/>
+  <!-- Meridian (subtle) -->
+  <ellipse cx="256" cy="192" rx="40" ry="100" stroke="#F7941D" stroke-width="3" fill="none" opacity="0.45"/>
+
+  <!-- Connection lines between hub and nodes -->
+  <g stroke="#F7941D" stroke-width="3" opacity="0.7" stroke-linecap="round">
+    <line x1="256" y1="192" x2="200" y2="148"/>
+    <line x1="256" y1="192" x2="312" y2="146"/>
+    <line x1="256" y1="192" x2="318" y2="232"/>
+    <line x1="256" y1="192" x2="198" y2="238"/>
+    <line x1="256" y1="192" x2="256" y2="120"/>
+  </g>
+
+  <!-- Central hub -->
+  <circle cx="256" cy="192" r="18" fill="#F7941D"/>
+  <circle cx="256" cy="192" r="8" fill="#002741"/>
+
+  <!-- Asset nodes -->
+  <g fill="#FCBA63">
+    <circle cx="200" cy="148" r="11"/>
+    <circle cx="312" cy="146" r="11"/>
+    <circle cx="318" cy="232" r="11"/>
+    <circle cx="198" cy="238" r="11"/>
+    <circle cx="256" cy="120" r="9"/>
+  </g>
+
+  <!-- Stem -->
+  <path d="M 232 322 L 280 322 L 280 446 Q 280 470 256 470 Q 232 470 232 446 Z" fill="#F7941D"/>
+</svg>
