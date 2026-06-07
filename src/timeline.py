@@ -226,6 +226,13 @@ def build_timeline(
         if col not in timeline.columns:
             timeline[col] = None
 
+    # Coerce sort keys to clean, orderable dtypes first. A mixed object column
+    # (Timestamps + None) breaks multi-key sort under newer pandas (it tries to
+    # build an ordered Categorical and raises "'values' is not ordered").
+    timeline['start_timestamp'] = pd.to_datetime(timeline['start_timestamp'], errors='coerce')
+    timeline['session_id'] = timeline['session_id'].astype('string')
+    timeline['mmu_id'] = timeline['mmu_id'].astype('string')
+
     # Sort: session → mmu → timestamp (NaT rows go last)
     timeline = timeline.sort_values(
         ['session_id', 'mmu_id', 'start_timestamp'],
