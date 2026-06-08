@@ -28,8 +28,14 @@ EVENT_FORMS = [fid for fid, t in FORM_TYPE_BY_ID.items() if t == "event_log"]
 
 
 def main(window_days: int = 90, show: int = 5):
+    import os
+    print(">>> diag_bench starting", flush=True)
+    print(f"    DATA_BUCKET={os.environ.get('DATA_BUCKET')!r}", flush=True)
+    print(f"    SUBMISSIONS_TABLE={os.environ.get('SUBMISSIONS_TABLE')!r}", flush=True)
+    print(f"    AWS_PROFILE={os.environ.get('AWS_PROFILE')!r} AWS_REGION={os.environ.get('AWS_REGION')!r}", flush=True)
+    print(f"    fetching {window_days}d of records (reading S3, may take a moment)...", flush=True)
     recs = fetch_clean_records(window_days=window_days)
-    print(f"fetched {len(recs)} clean records over {window_days}d\n")
+    print(f"fetched {len(recs)} clean records over {window_days}d\n", flush=True)
 
     loading = []
     for r in recs:
@@ -73,4 +79,10 @@ def main(window_days: int = 90, show: int = 5):
 
 if __name__ == "__main__":
     wd = int(sys.argv[1]) if len(sys.argv) > 1 else 90
-    main(window_days=wd)
+    try:
+        main(window_days=wd)
+    except Exception:
+        import traceback
+        print("\n!!! diag_bench failed:", flush=True)
+        traceback.print_exc()
+        sys.exit(1)
