@@ -28,6 +28,8 @@ TIMELINE_COLUMNS = [
     'activity_type',
     'activity_category',
     'activity_detail',
+    'bench_location',
+    'specify',
     'start_timestamp',
     'end_timestamp',
     'duration_minutes',
@@ -62,10 +64,12 @@ def _session_boundary_events(sessions: pd.DataFrame) -> pd.DataFrame:
             'exception_reason': '',
         }
         rows.append({**base, 'activity_type': 'Shift Start', 'start_timestamp': s['shift_start_timestamp'],
-                     'source_table': 'shift_log', 'activity_category': 'Shift', 'activity_detail': ''})
+                     'source_table': 'shift_log', 'activity_category': 'Shift', 'activity_detail': '',
+                     'bench_location': '', 'specify': ''})
         if pd.notna(s['shift_end_timestamp']):
             rows.append({**base, 'activity_type': 'Shift End', 'start_timestamp': s['shift_end_timestamp'],
-                         'source_table': 'shift_log', 'activity_category': 'Shift', 'activity_detail': ''})
+                         'source_table': 'shift_log', 'activity_category': 'Shift', 'activity_detail': '',
+                         'bench_location': '', 'specify': ''})
     return pd.DataFrame(rows)
 
 
@@ -84,6 +88,8 @@ def _event_log_events(event_df: pd.DataFrame, sessions: pd.DataFrame, config: di
         activity_type = str(row.get('activity_type', '') or '').strip()
         activity_category = str(row.get('activity_category', '') or '').strip()
         activity_detail = str(row.get('activity_detail', '') or '').strip()
+        bench_location = str(row.get('bench_location', '') or '').strip()
+        specify = str(row.get('specify', '') or '').strip()
         reporting_date = str(row.get('reporting_date', '') or '').strip() or None
 
         exceptions = []
@@ -120,6 +126,8 @@ def _event_log_events(event_df: pd.DataFrame, sessions: pd.DataFrame, config: di
             'activity_type': activity_type or 'Unknown',
             'activity_category': activity_category,
             'activity_detail': activity_detail,
+            'bench_location': bench_location,
+            'specify': specify,
             'start_timestamp': ts,
             'end_timestamp': pd.NaT,
             'duration_minutes': None,
@@ -180,6 +188,8 @@ def _toolbox_talk_events(toolbox_df: pd.DataFrame, sessions: pd.DataFrame, confi
             'activity_type': 'Toolbox Talk',
             'activity_category': 'Safety',
             'activity_detail': '',
+            'bench_location': '',
+            'specify': '',
             'start_timestamp': ts,
             'end_timestamp': pd.NaT,
             'duration_minutes': None,

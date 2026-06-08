@@ -38,6 +38,9 @@ export type TimelineRow = {
   operator_name?: string;
   activity_type?: string;
   activity_category?: string;
+  activity_detail?: string;
+  bench_location?: string;
+  specify?: string;
   duration_minutes?: number;
   start_timestamp?: string;
   reporting_date?: string;

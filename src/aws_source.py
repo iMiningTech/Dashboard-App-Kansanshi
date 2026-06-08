@@ -50,6 +50,9 @@ FORM_TYPE_BY_ID = {
 TEXT_BREAKDOWN_CATEGORY = "Breakdown Category:"
 TEXT_ADDITIONAL_INFO = "Additional Information (Optional):"
 TEXT_TOOLBOX_DETAIL = "Questions Or Concerns (Optional):"
+# Conditional fields shown when activity == "Loading Explosives" (#input_37 etc.)
+TEXT_BENCH_LOCATION = "Bench Location:"
+TEXT_SPECIFY = "Specify:"
 
 _QID_RE = re.compile(r"^q(\d+)_")
 
@@ -211,6 +214,8 @@ def build_frames(records: List[Dict[str, Any]], config: dict):
             base["activity_type"] = n.get("activity") or ""
             base["activity_category"] = tmap.get(TEXT_BREAKDOWN_CATEGORY) or ""
             base["activity_detail"] = tmap.get(TEXT_ADDITIONAL_INFO) or ""
+            base["bench_location"] = tmap.get(TEXT_BENCH_LOCATION) or ""
+            base["specify"] = tmap.get(TEXT_SPECIFY) or ""
             event_rows.append(base)
         elif stype == "toolbox_talk":
             tmap = _text_value_map(rec)

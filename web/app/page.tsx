@@ -13,7 +13,7 @@ import {
   filterTimeline, filterPrestart, sessionSummary, sessionsWithEnd, activityTimeline,
   kpis, uniqueSorted, groupSum, groupCount,
 } from "@/lib/data";
-import { ACTIVITY_COLOURS, CATEGORY_COLOURS, BUCKET_COLOURS, ACTIVITY_BUCKET, paletteMap, activityColour } from "@/lib/colors";
+import { ACTIVITY_COLOURS, CATEGORY_COLOURS, BUCKET_COLOURS, ACTIVITY_BUCKET, MASTER_PALETTE, paletteMap, activityColour } from "@/lib/colors";
 import { fmtTime } from "@/lib/utils";
 
 const VIEWS = [
@@ -232,7 +232,7 @@ export default function Dashboard() {
             <div className="space-y-6">
               {view === "overview" && <OverviewView d={d} live={live} assets={assets} prestart={raw?.prestart || []} />}
               {view === "logouts" && <OperatorMetricsView d={d} />}
-              {view === "util" && <UtilView d={d} />}
+              {view === "util" && <UtilView d={d} fleet={effMmus.size || allMmus.length} />}
               {view === "prestart" && <PrestartView d={d} />}
               {view === "perf" && <PerfView d={d} />}
               {view === "timeline" && <TimelineView d={d} selected={effMmus} />}
@@ -518,7 +518,7 @@ function OperatorMetricsView({ d }: { d: D }) {
 }
 
 /* ── MMU Utilization ── */
-function UtilView({ d }: { d: D }) {
+function UtilView({ d, fleet }: { d: D; fleet: number }) {
   const piv = pivot(d.act, (r) => r.mmu_id || "—", (r) => r.activity_type || "Other", (r) => r.duration_hours);
   piv.data.forEach((row) => piv.series.forEach((s) => (row[s] = round1(Number(row[s]) || 0))));
   const colourMap: Record<string, string> = {};
@@ -526,8 +526,68 @@ function UtilView({ d }: { d: D }) {
   const mix = groupSum(d.act, (r) => r.activity_type || "Other", (r) => r.duration_hours).map((x) => ({ name: x.name, value: round1(x.value) }));
   const daily = pivot(d.act, (r) => (r.reporting_date || "").slice(0, 10), (r) => r.activity_type || "Other", (r) => r.duration_hours);
   daily.data.sort((a, b) => String(a.x).localeCompare(String(b.x)));
+
+  // Loading-explosives fleet utilization: per activity day, how many distinct
+  // MMUs logged a Loading Explosives event (= were actively loading), against
+  // the reporting fleet size.
+  const loadByDay = new Map<string, Set<string>>();
+  for (const r of d.act) {
+    if (r.activity_type !== "Loading Explosives") continue;
+    const day = (r.reporting_date || "").slice(0, 10);
+    const mmu = (r.mmu_id || "").trim();
+    if (!day || !mmu) continue;
+    (loadByDay.get(day) || loadByDay.set(day, new Set()).get(day)!).add(mmu);
+  }
+  const utilData = Array.from(loadByDay, ([name, set]) => ({ name, value: set.size })).sort((a, b) => a.name.localeCompare(b.name));
+  const loadingEvents = d.act.filter((r) => r.activity_type === "Loading Explosives");
+  const benches = loadingEvents.length;
+
+  // Benches loaded per day, broken down by bench location (populated once the
+  // pipeline captures Bench Location — re-run precompute to backfill).
+  const hasBench = loadingEvents.some((r) => (r.bench_location || "").trim());
+  const benchPiv = pivot(loadingEvents, (r) => (r.reporting_date || "").slice(0, 10), (r) => (r.bench_location || "").trim() || "Unspecified", () => 1);
+  benchPiv.data.sort((a, b) => String(a.x).localeCompare(String(b.x)));
+  const benchColors: Record<string, string> = {};
+  benchPiv.series.forEach((s, i) => (benchColors[s] = MASTER_PALETTE[i % MASTER_PALETTE.length]));
+  const benchRows = loadingEvents
+    .map((r) => ({ Date: (r.reporting_date || "").slice(0, 10), MMU: r.mmu_id, "Bench Location": r.bench_location || "—", Specify: r.specify || "—", Operator: r.operator_name }))
+    .sort((a, b) => a.Date.localeCompare(b.Date));
+  const peak = utilData.reduce((m, x) => Math.max(m, x.value), 0);
+  const avg = utilData.length ? utilData.reduce((s, x) => s + x.value, 0) / utilData.length : 0;
+  // colour each day by how much of the fleet was loading (green = high)
+  const utilColors: Record<string, string> = {};
+  utilData.forEach((x) => {
+    const pct = fleet ? x.value / fleet : 0;
+    utilColors[x.name] = pct >= 0.66 ? "#59A14F" : pct >= 0.33 ? "#F1A340" : "#E15759";
+  });
+
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="Reporting fleet" value={fleet} sub="MMUs in scope" />
+        <Stat label="Benches loaded" value={benches} sub="loading-explosives events" />
+        <Stat label="Peak MMUs loading" value={peak} sub="busiest day" />
+        <Stat label="Avg MMUs loading / day" value={round1(avg)} />
+      </div>
+
+      <ChartCard title="Fleet utilization — MMUs loading explosives per day"
+        subtitle={`Distinct MMUs that logged loading on each activity day · of ${fleet} reporting MMUs · green ≥⅔ · amber ≥⅓ · red <⅓ of fleet`}>
+        <BarV data={utilData} colorMap={utilColors} xLabel="Date" yLabel="MMUs loading explosives" height={340} />
+      </ChartCard>
+
+      {hasBench && (
+        <ChartCard title="Benches loaded per day by location" subtitle="Loading-explosives events stacked by bench location">
+          <StackedBar rows={benchPiv.data} xKey="x" series={benchPiv.series} colorMap={benchColors} />
+        </ChartCard>
+      )}
+
+      <ChartCard title="Loading-explosives detail"
+        subtitle={hasBench ? "Each loading event with its bench location" : "Bench Location / Specify populate once the pipeline is re-run to capture them"}>
+        <DataTable
+          columns={[{ key: "Date", label: "Date" }, { key: "MMU", label: "MMU" }, { key: "Bench Location", label: "Bench Location" }, { key: "Specify", label: "Specify" }, { key: "Operator", label: "Operator" }]}
+          rows={benchRows} csvName="loading_explosives.csv" />
+      </ChartCard>
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ChartCard title="Total activity hours by MMU"><StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={colourMap} /></ChartCard>
         <ChartCard title="Fleet-wide activity mix"><Donut data={mix} colorMap={ACTIVITY_COLOURS} /></ChartCard>

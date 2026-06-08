@@ -34,8 +34,9 @@ These are the join keys that tie the streams together. **Exact Jotform column la
 **2. Event Log (`event_log`)**
 - `"What Are You Logging:"` → activity type
 - `"Breakdown Category:"` → activity category
-- `"Additional Information (Optional):"` → free-text detail
-- (also a `"Specify:"` free-text field, currently not mapped)
+- `"Additional Information (Optional):"` → free-text detail (`activity_detail`)
+- `"Bench Location:"` → `bench_location` (conditional field shown when activity = "Loading Explosives")
+- `"Specify:"` → `specify` (conditional free-text shown when activity = "Loading Explosives")
 
 **3. Toolbox Talk Log (`toolbox_talk`)**
 - `"Questions Or Concerns (Optional):"` → free-text detail
