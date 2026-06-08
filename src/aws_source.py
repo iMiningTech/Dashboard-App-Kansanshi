@@ -234,14 +234,65 @@ PRESTART_COLUMNS = [
     "comment", "fault_flag", "source_row_index", "source_file",
 ]
 
-def _clean_label(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "").replace("\t", " ")).strip()
+def _clean_label(s) -> str:
+    return re.sub(r"\s+", " ", str(s or "").replace("\t", " ")).strip()
+
+def _parse_maybe(v):
+    """JSON-decode a string that looks like an object/array; else return as-is."""
+    if isinstance(v, str):
+        s = v.strip()
+        if s[:1] in ("[", "{"):
+            try:
+                return json.loads(s)
+            except Exception:
+                return v
+    return v
+
+# Friendly category when there's no schema text (backfilled records have none).
+_NAME_CATEGORY = {
+    "incab": "IN CAB CHECKS", "external": "EXTERNAL CHECKS",
+    "quality": "QUALITY", "before": "BEFORE DRIVING OFF",
+}
+
+def _matrix_rows(value):
+    """
+    Return [(item_label_or_None, [status, fault_no, comment]), ...] if `value` is
+    a checklist matrix, else None. Handles BOTH shapes:
+      • live webhook:  [["FAULT","",""], ["OK","",""], ...]            (list of rows)
+      • backfill API:  {"<item label>": "[\"FAULT\",\"\",\"\"]", ...}  (dict)
+    """
+    value = _parse_maybe(value)
+    out = []
+    if isinstance(value, list):
+        for cell in value:
+            cell = _parse_maybe(cell)
+            if isinstance(cell, list):
+                out.append((None, cell))
+        return out or None
+    if isinstance(value, dict):
+        for label, cell in value.items():
+            cell = _parse_maybe(cell)
+            if isinstance(cell, list):
+                out.append((label, cell))
+        return out or None
+    return None
+
+def _category_for(name: str, schema: dict, qid: str) -> str:
+    q = (schema or {}).get(qid)
+    if isinstance(q, dict) and q.get("text"):
+        return _clean_label(q["text"])
+    nl = (name or "").lower()
+    for frag, cat in _NAME_CATEGORY.items():
+        if frag in nl:
+            return cat
+    return _clean_label(name)
 
 def explode_prestart(records: List[Dict[str, Any]], config: dict) -> pd.DataFrame:
     """
-    Each MMU Pre-Start submission has control_matrix questions whose answer is a
-    list of [STATUS, FAULT NO., Comment] rows aligned to the question's `mrows`
-    (item labels). Explode to one row per (inspection, item).
+    One row per (inspection, checklist item). Detects checklist matrices straight
+    from the submission DATA (schema-independent), so it works for both live
+    submissions (list-of-rows answers, with schema mrows for labels) and
+    backfilled records (dict answers keyed by item label, no schema).
     """
     mmu_aliases = config.get("mmu_aliases") or {}
     op_aliases = config.get("operator_aliases") or {}
@@ -253,28 +304,28 @@ def explode_prestart(records: List[Dict[str, Any]], config: dict) -> pd.DataFram
             continue
         n = _norm(rec)
         schema = rec.get("schema") or {}
-        by_qid = _index_raw_by_qid(rec.get("raw_submission") or rec.get("data") or {})
+        data = rec.get("raw_submission") or rec.get("data") or {}
         mmu = normalize_text(n.get("fleet_no") or "", mmu_aliases)
         operator = normalize_text(n.get("operator") or "", op_aliases)
         ts = _timestamp(rec)
         reporting_date = ts[:10] if ts else None
         sid = rec.get("submission_id") or ""
 
-        for qid, q in schema.items():
-            if not isinstance(q, dict) or q.get("type") != "control_matrix":
+        for key, raw_val in data.items():
+            m = re.match(r"^q(\d+)_(.*)$", key)
+            if not m:
                 continue
-            category = _clean_label(q.get("text"))
-            items = [_clean_label(x) for x in (q.get("mrows") or "").split("|")]
-            ans = by_qid.get(str(q.get("qid", qid)))
-            if not isinstance(ans, list):
+            qid, name = m.group(1), m.group(2)
+            matrix = _matrix_rows(raw_val)
+            if not matrix:
                 continue
-            for idx, cell in enumerate(ans):
-                if not isinstance(cell, list):
-                    continue
-                status = (cell[0] if len(cell) > 0 else "") or ""
-                fault_number = (cell[1] if len(cell) > 1 else "") or ""
-                comment = (cell[2] if len(cell) > 2 else "") or ""
-                item = items[idx] if idx < len(items) else f"item_{idx + 1}"
+            category = _category_for(name, schema, qid)
+            mrows = [x for x in (_clean_label(y) for y in str((schema.get(qid) or {}).get("mrows") or "").split("|")) if x]
+            for idx, (label, cell) in enumerate(matrix):
+                status = str(cell[0]).strip() if len(cell) > 0 and cell[0] is not None else ""
+                fault_number = str(cell[1]).strip() if len(cell) > 1 and cell[1] is not None else ""
+                comment = str(cell[2]).strip() if len(cell) > 2 and cell[2] is not None else ""
+                item = _clean_label(label) if label else (mrows[idx] if idx < len(mrows) else f"item_{idx + 1}")
                 fault_flag = any(k in status.lower() for k in fault_kw)
                 rows.append({
                     "mmu_id": mmu or None,
@@ -287,7 +338,7 @@ def explode_prestart(records: List[Dict[str, Any]], config: dict) -> pd.DataFram
                     "fault_number": fault_number,
                     "comment": comment,
                     "fault_flag": fault_flag,
-                    "source_row_index": 0,
+                    "source_row_index": idx,
                     "source_file": sid,
                 })
     return pd.DataFrame(rows) if rows else pd.DataFrame(columns=PRESTART_COLUMNS)

@@ -161,15 +161,19 @@ BUCKET_COLOURS = {
 import os as _os
 
 def _data_settings():
-    source = _os.environ.get("DATA_SOURCE", "csv").lower()
-    window = int(_os.environ.get("DATA_WINDOW_DAYS", "7"))
+    # Precedence: env var wins, then secrets file, then default CSV. (Env winning
+    # means `DATA_SOURCE=csv streamlit run …` always forces CSV for local browsing.)
+    source = _os.environ.get("DATA_SOURCE")
+    window = _os.environ.get("DATA_WINDOW_DAYS")
     try:
         if "data" in st.secrets:                       # type: ignore[attr-defined]
-            source = str(st.secrets["data"].get("source", source)).lower()
-            window = int(st.secrets["data"].get("window_days", window))
+            if source is None:
+                source = st.secrets["data"].get("source")
+            if window is None:
+                window = st.secrets["data"].get("window_days")
     except Exception:
         pass
-    return source, window
+    return (source or "csv").lower(), int(window or 7)
 
 DATA_SOURCE, DATA_WINDOW_DAYS = _data_settings()
 TS_COLS = ["start_timestamp", "end_timestamp", "shift_start_timestamp", "shift_end_timestamp"]

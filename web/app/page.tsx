@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
-  LayoutDashboard, AlertCircle, BarChart3, ClipboardCheck, Timer, CalendarRange,
+  LayoutDashboard, AlertCircle, AlertTriangle, BarChart3, ClipboardCheck, Timer, CalendarRange,
   User, Activity, RefreshCw, Truck,
 } from "lucide-react";
-import { api, type DashboardData, type MmuStatus } from "@/lib/api";
+import { api, type DashboardData, type MmuStatus, type PrestartRow } from "@/lib/api";
 import { Card, CardBody, Stat, Badge } from "@/components/ui";
 import { ChartCard, BarH, StackedBar, Donut, AreaTrend, DataTable } from "@/components/charts";
 import {
@@ -161,7 +161,7 @@ export default function Dashboard() {
           {loading ? <div className="text-sm text-muted">Loading…</div> : (
             <div className="space-y-6">
               {/* SITE STATUS — always on top */}
-              <SiteStatus live={live} />
+              <SiteStatus live={live} prestart={raw?.prestart || []} />
               {/* KPIs */}
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <Stat label="Shift sessions" value={d.k.totalSessions} />
@@ -185,7 +185,12 @@ export default function Dashboard() {
 }
 
 /* ── Site status (real-time current_mmu) ── */
-function SiteStatus({ live }: { live: MmuStatus[] }) {
+function SiteStatus({ live, prestart }: { live: MmuStatus[]; prestart: PrestartRow[] }) {
+  // (MMU, date) pairs that have a pre-start on record — to flag units whose
+  // last shift had no pre-start inspection logged.
+  const prestartKeys = new Set(
+    prestart.map((p) => `${p.mmu_id}|${(p.reporting_date || "").slice(0, 10)}`)
+  );
   return (
     <div>
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg"><Truck size={16} /> Site Status — current snapshot</div>
@@ -193,6 +198,8 @@ function SiteStatus({ live }: { live: MmuStatus[] }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {live.map((m) => {
             const active = (m.status || "").toUpperCase() === "ON_SHIFT";
+            const day = (m.last_seen || "").slice(0, 10);
+            const noPrestart = !!m.fleet_no && !!day && !prestartKeys.has(`${m.fleet_no}|${day}`);
             return (
               <Card key={m.fleet_no}>
                 <CardBody>
@@ -202,7 +209,14 @@ function SiteStatus({ live }: { live: MmuStatus[] }) {
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-sm text-muted"><User size={14} /> {m.operator || m.operator_last || "—"}</div>
                   <div className="mt-1 flex items-center gap-2 text-sm text-fg"><Activity size={14} className="text-accent" /> {m.last_activity || "—"}</div>
-                  <div className="mt-2 text-xs text-muted">{fmtTime(m.last_seen)}</div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-muted">{fmtTime(m.last_seen)}</span>
+                    {noPrestart && (
+                      <span className="flex items-center gap-1 text-xs font-medium text-warn" title="No pre-start inspection logged for this shift">
+                        <AlertTriangle size={14} /> No pre-start
+                      </span>
+                    )}
+                  </div>
                 </CardBody>
               </Card>
             );

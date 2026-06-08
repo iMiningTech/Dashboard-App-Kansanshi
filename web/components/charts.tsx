@@ -73,10 +73,12 @@ export function Donut({ data, colorMap, height = 380 }:
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="80%" paddingAngle={1}>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius="52%" outerRadius="80%" paddingAngle={1}
+               label={(e: { percent?: number }) => ((e.percent ?? 0) >= 0.04 ? `${Math.round((e.percent ?? 0) * 100)}%` : "")}
+               labelLine={false}>
             {data.map((d, i) => <Cell key={i} fill={colorMap?.[d.name] || MASTER_PALETTE[i % MASTER_PALETTE.length]} />)}
           </Pie>
-          <Tooltip />
+          <Tooltip formatter={(v: number, n: string) => [v, n]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>
