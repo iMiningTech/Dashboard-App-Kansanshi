@@ -20,7 +20,7 @@ const VIEWS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "logouts", label: "Operator Metrics", icon: User },
   { id: "util", label: "MMU Utilization", icon: BarChart3 },
-  { id: "prestart", label: "Pre-start Faults", icon: ClipboardCheck },
+  { id: "prestart", label: "Faults & Breakdowns", icon: ClipboardCheck },
   { id: "perf", label: "Shift Performance", icon: Timer },
   { id: "timeline", label: "Shift Timeline", icon: CalendarRange },
 ] as const;
@@ -40,6 +40,9 @@ function pivot<T>(rows: T[], xKey: (r: T) => string, sKey: (r: T) => string, val
   return { data: xs.map((x) => m.get(x)!), series: Array.from(ss) };
 }
 const round1 = (n: number) => Math.round(n * 10) / 10;
+// Inclusive day count between two YYYY-MM-DD strings (e.g. 1 May–30 May = 30).
+const rangeDays = (lo: string, hi: string) =>
+  lo && hi ? Math.round((Date.parse(hi + "T00:00:00Z") - Date.parse(lo + "T00:00:00Z")) / 86400000) + 1 : 0;
 // Internal / QA submissions hidden from the customer view by default: anything
 // containing "test" (e.g. "Justin James is testing") plus an explicit list of
 // internal/dev names (matched exactly, case-insensitive — so a real operator
@@ -232,7 +235,7 @@ export default function Dashboard() {
             <div className="space-y-6">
               {view === "overview" && <OverviewView d={d} live={live} assets={assets} prestart={raw?.prestart || []} />}
               {view === "logouts" && <OperatorMetricsView d={d} />}
-              {view === "util" && <UtilView d={d} fleet={effMmus.size || allMmus.length} />}
+              {view === "util" && <UtilView d={d} fleet={effMmus.size || allMmus.length} selectedDays={rangeDays(lo, hi)} />}
               {view === "prestart" && <PrestartView d={d} />}
               {view === "perf" && <PerfView d={d} />}
               {view === "timeline" && <TimelineView d={d} selected={effMmus} />}
@@ -518,7 +521,13 @@ function OperatorMetricsView({ d }: { d: D }) {
 }
 
 /* ── MMU Utilization ── */
-function UtilView({ d, fleet }: { d: D; fleet: number }) {
+function UtilView({ d, fleet, selectedDays }: { d: D; fleet: number; selectedDays: number }) {
+  // Distinct days with loading-explosives events, vs the selected range length.
+  // Loading is the metric that matters — days with none aren't productive days.
+  // Matches the fleet utilization chart below.
+  const loadingDays = new Set(
+    d.act.filter((r) => r.activity_type === "Loading Explosives").map((r) => (r.reporting_date || "").slice(0, 10)).filter(Boolean)
+  ).size;
   const piv = pivot(d.act, (r) => r.mmu_id || "—", (r) => r.activity_type || "Other", (r) => r.duration_hours);
   piv.data.forEach((row) => piv.series.forEach((s) => (row[s] = round1(Number(row[s]) || 0))));
   const colourMap: Record<string, string> = {};
@@ -550,8 +559,24 @@ function UtilView({ d, fleet }: { d: D; fleet: number }) {
   const benchColors: Record<string, string> = {};
   benchPiv.series.forEach((s, i) => (benchColors[s] = MASTER_PALETTE[i % MASTER_PALETTE.length]));
   const benchRows = loadingEvents
-    .map((r) => ({ Date: (r.reporting_date || "").slice(0, 10), MMU: r.mmu_id, "Bench Location": r.bench_location || "—", Specify: r.specify || "—", Operator: r.operator_name }))
-    .sort((a, b) => a.Date.localeCompare(b.Date));
+    .map((r) => ({
+      Date: (r.reporting_date || "").slice(0, 10),
+      Time: (r.start_timestamp || "").slice(11, 16) || "—",
+      MMU: r.mmu_id,
+      "Bench Location": r.bench_location || "—",
+      Specify: r.specify || "—",
+      Operator: r.operator_name,
+      _ts: r.start_timestamp || "",
+    }))
+    // Rows that carry bench/specify float to the top; then newest day first,
+    // and chronological within a day so accidental consecutive logs sit together.
+    .sort((a, b) => {
+      const aFilled = a["Bench Location"] !== "—" || a.Specify !== "—";
+      const bFilled = b["Bench Location"] !== "—" || b.Specify !== "—";
+      if (aFilled !== bFilled) return aFilled ? -1 : 1;
+      if (a.Date !== b.Date) return b.Date.localeCompare(a.Date);
+      return String(a._ts).localeCompare(String(b._ts));
+    });
   const peak = utilData.reduce((m, x) => Math.max(m, x.value), 0);
   const avg = utilData.length ? utilData.reduce((s, x) => s + x.value, 0) / utilData.length : 0;
   // colour each day by how much of the fleet was loading (green = high)
@@ -563,8 +588,9 @@ function UtilView({ d, fleet }: { d: D; fleet: number }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Stat label="Reporting fleet" value={fleet} sub="MMUs in scope" />
+        <Stat label="Days of loading data" value={`${loadingDays} / ${selectedDays}`} sub="loading days / selected days" />
         <Stat label="Benches loaded" value={benches} sub="loading-explosives events" />
         <Stat label="Peak MMUs loading" value={peak} sub="busiest day" />
         <Stat label="Avg MMUs loading / day" value={round1(avg)} />
@@ -584,7 +610,7 @@ function UtilView({ d, fleet }: { d: D; fleet: number }) {
       <ChartCard title="Loading-explosives detail"
         subtitle={hasBench ? "Each loading event with its bench location" : "Bench Location / Specify populate once the pipeline is re-run to capture them"}>
         <DataTable
-          columns={[{ key: "Date", label: "Date" }, { key: "MMU", label: "MMU" }, { key: "Bench Location", label: "Bench Location" }, { key: "Specify", label: "Specify" }, { key: "Operator", label: "Operator" }]}
+          columns={[{ key: "Date", label: "Date" }, { key: "Time", label: "Time" }, { key: "MMU", label: "MMU" }, { key: "Bench Location", label: "Bench Location" }, { key: "Specify", label: "Specify" }, { key: "Operator", label: "Operator" }]}
           rows={benchRows} csvName="loading_explosives.csv" />
       </ChartCard>
 
@@ -600,20 +626,88 @@ function UtilView({ d, fleet }: { d: D; fleet: number }) {
 /* ── Pre-start faults ── */
 function PrestartView({ d }: { d: D }) {
   const faults = d.ps.filter((p) => p.fault_flag);
+  const breakdowns = d.act.filter((r) => r.activity_type === "Breakdown");
+
+  // Combined log count (pre-start faults + breakdown events) per MMU → worst unit.
+  const logByMmu = new Map<string, number>();
+  for (const f of faults) { const m = f.mmu_id || "—"; logByMmu.set(m, (logByMmu.get(m) || 0) + 1); }
+  for (const b of breakdowns) { const m = b.mmu_id || "—"; logByMmu.set(m, (logByMmu.get(m) || 0) + 1); }
+  let topMmu = "—", topN = 0;
+  for (const [m, n] of logByMmu) if (n > topN) { topN = n; topMmu = m; }
+
   const byMmu = groupCount(faults, (p) => p.mmu_id || "—").sort((a, b) => a.value - b.value);
   const byCat = groupCount(faults, (p) => p.checklist_category || "—").sort((a, b) => b.value - a.value);
-  const byItem = groupCount(faults, (p) => (p.checklist_item || "—")).sort((a, b) => b.value - a.value).slice(0, 15)
+  const byItem = groupCount(faults, (p) => (p.checklist_item || "—")).sort((a, b) => b.value - a.value).slice(0, 5)
     .map((x) => ({ name: x.name.length > 48 ? x.name.slice(0, 48) + "…" : x.name, value: x.value }));
-  const rows = faults.map((p) => ({ MMU: p.mmu_id, Date: p.reporting_date, Category: p.checklist_category, Item: p.checklist_item, Status: p.status }));
+  const rows = faults.map((p) => ({ MMU: p.mmu_id, Date: p.reporting_date, Category: p.checklist_category, Item: p.checklist_item }));
+
+  // ── Used-after-fault: an MMU flagged with a pre-start fault that still
+  // loaded explosives later the same day (after the flag time). ──
+  const ms = (s?: string) => { const t = Date.parse(s || ""); return isNaN(t) ? null : t; };
+  const keyOf = (mmu?: string | null, date?: string | null) => `${(mmu || "").trim()}|${(date || "").slice(0, 10)}`;
+  // earliest fault flag time + fault count per MMU/day
+  const faultGroups = new Map<string, { time: string; items: number }>();
+  for (const f of faults) {
+    const k = keyOf(f.mmu_id, f.reporting_date);
+    const t = f.inspection_timestamp || "";
+    const g = faultGroups.get(k);
+    if (!g) faultGroups.set(k, { time: t, items: 1 });
+    else { g.items++; if (t && (!g.time || t < g.time)) g.time = t; }
+  }
+  // activity events grouped by MMU/day
+  const actByKey = new Map<string, typeof d.act>();
+  for (const a of d.act) { const k = keyOf(a.mmu_id, a.reporting_date); (actByKey.get(k) || actByKey.set(k, []).get(k)!).push(a); }
+  const incidents: Record<string, unknown>[] = [];
+  for (const [k, g] of faultGroups) {
+    const flagMs = ms(g.time);
+    if (flagMs == null) continue;  // need a real flag time to order against
+    const after = (actByKey.get(k) || [])
+      .filter((a) => a.activity_type === "Loading Explosives")
+      .filter((a) => { const t = ms(a.start_timestamp); return t != null && t > flagMs; })
+      .sort((a, b) => (a.start_timestamp || "").localeCompare(b.start_timestamp || ""));
+    if (!after.length) continue;
+    const [mmu, date] = k.split("|");
+    const first = after[0];
+    incidents.push({
+      Date: date, MMU: mmu,
+      "Flagged": g.time.slice(11, 16),
+      "Faults": g.items,
+      "First use after": `${(first.start_timestamp || "").slice(11, 16)} · ${first.activity_type}`,
+      "Uses after": after.length,
+      Operator: first.operator_name,
+    });
+  }
+  incidents.sort((a, b) => String(b.Date).localeCompare(String(a.Date)));
+  const incidentByMmu = groupCount(incidents, (r) => String(r.MMU)).sort((a, b) => a.value - b.value);
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Fault flags by MMU"><BarH data={byMmu} colorMap={paletteMap(byMmu.map((x) => x.name))} /></ChartCard>
-        <ChartCard title="Faults by checklist category"><Donut data={byCat} colorMap={CATEGORY_COLOURS} /></ChartCard>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="Pre-start fault flags" value={faults.length} sub="over selected dates" />
+        <Stat label="Breakdowns logged" value={breakdowns.length} sub="breakdown events" />
+        <Stat label="Most-flagged MMU" value={topMmu} sub={`${topN} faults + breakdowns`} />
+        <Stat label="No. of times MMU used after pre-start fault" value={incidents.length} sub="loaded explosives same day" />
       </div>
-      <ChartCard title="Top 15 most flagged items"><BarH data={byItem} height={430} /></ChartCard>
-      <ChartCard title="Fault records">
-        <DataTable columns={[{ key: "MMU", label: "MMU" }, { key: "Date", label: "Date" }, { key: "Category", label: "Category" }, { key: "Item", label: "Item" }, { key: "Status", label: "Status" }]}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ChartCard title="Pre-Start Fault Flags by MMU"><BarH data={byMmu} colorMap={paletteMap(byMmu.map((x) => x.name))} xLabel="Fault Flags" yLabel="MMU" /></ChartCard>
+        <ChartCard title="Pre-Start Faults by checklist category"><Donut data={byCat} colorMap={CATEGORY_COLOURS} /></ChartCard>
+      </div>
+      <ChartCard title="Top 5 most flagged Pre-start items"><BarH data={byItem} height={260} /></ChartCard>
+
+      <ChartCard title="Number of times an MMU was used to load explosives after a pre-start fault was logged on same day" subtitle="By MMU">
+        {incidentByMmu.length
+          ? <BarH data={incidentByMmu} colorMap={paletteMap(incidentByMmu.map((x) => x.name))} xLabel="Cases" yLabel="MMU" height={Math.max(160, incidentByMmu.length * 36)} />
+          : <div className="py-10 text-center text-sm text-muted">No cases — flagged MMUs didn&apos;t load explosives again the same day.</div>}
+      </ChartCard>
+      <ChartCard title="Loaded explosives after fault logged"
+        subtitle="Each case: when the fault was flagged vs the first loading-explosives event afterwards on that MMU the same day. Relies on accurate user-entered times.">
+        <DataTable
+          columns={[{ key: "Date", label: "Date" }, { key: "MMU", label: "MMU" }, { key: "Flagged", label: "Fault flagged" }, { key: "Faults", label: "Faults" }, { key: "First use after", label: "First load after" }, { key: "Uses after", label: "Loads after" }, { key: "Operator", label: "Operator" }]}
+          rows={incidents} csvName="loaded_after_fault.csv" />
+      </ChartCard>
+
+      <ChartCard title="Pre-start fault records">
+        <DataTable columns={[{ key: "MMU", label: "MMU" }, { key: "Date", label: "Date" }, { key: "Category", label: "Category" }, { key: "Item", label: "Item" }]}
           rows={rows} csvName="prestart_faults.csv" />
       </ChartCard>
     </div>
