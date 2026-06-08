@@ -27,17 +27,18 @@ export function inRange(d: string | null | undefined, lo: string, hi: string): b
 }
 
 // Rows with no MMU assigned are junk (operator didn't use the app properly) and
-// are never displayed — they're captured separately as data-quality exceptions.
+// are never displayed. `mmus` is the explicit set of selected MMUs — an empty
+// set shows nothing (the page initialises it to "all" until the user changes it).
 export function filterTimeline(rows: TimelineRow[], mmus: Set<string>, lo: string, hi: string): TimelineRow[] {
   return rows.filter((r) => {
     const mmu = (r.mmu_id || "").trim();
-    return mmu !== "" && inRange(r.reporting_date, lo, hi) && (mmus.size === 0 || mmus.has(mmu));
+    return mmu !== "" && mmus.has(mmu) && inRange(r.reporting_date, lo, hi);
   });
 }
 export function filterPrestart(rows: PrestartRow[], mmus: Set<string>, lo: string, hi: string): PrestartRow[] {
   return rows.filter((r) => {
     const mmu = (r.mmu_id || "").trim();
-    return mmu !== "" && inRange(r.reporting_date, lo, hi) && (mmus.size === 0 || mmus.has(mmu));
+    return mmu !== "" && mmus.has(mmu) && inRange(r.reporting_date, lo, hi);
   });
 }
 

@@ -2,7 +2,7 @@
 
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, Legend,
-  CartesianGrid, PieChart, Pie, AreaChart, Area,
+  CartesianGrid, PieChart, Pie, AreaChart, Area, LabelList,
 } from "recharts";
 import { Card, CardBody } from "@/components/ui";
 import { MASTER_PALETTE } from "@/lib/colors";
@@ -23,19 +23,55 @@ export function ChartCard({ title, subtitle, children }: { title: string; subtit
 }
 
 // Horizontal bar, one row per category, each coloured from a map.
-export function BarH({ data, colorMap, height = 360, xLabel }:
-  { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number; xLabel?: string }) {
+export function BarH({ data, colorMap, height = 360, xLabel, yLabel }:
+  { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number; xLabel?: string; yLabel?: string }) {
   if (!data.length) return <Empty />;
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
-        <BarChart data={data} layout="vertical" margin={{ left: 16, right: 16 }}>
+        <BarChart data={data} layout="vertical" margin={{ left: yLabel ? 24 : 16, right: 16, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
-          <XAxis type="number" tick={AXIS} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -2, ...AXIS } : undefined} />
-          <YAxis type="category" dataKey="name" width={150} tick={AXIS} />
+          <XAxis type="number" tick={AXIS} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
+          <YAxis type="category" dataKey="name" width={150} tick={AXIS}
+                 label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
           <Bar dataKey="value" radius={[0, 5, 5, 0]}>
             {data.map((d, i) => <Cell key={i} fill={colorMap?.[d.name] || MASTER_PALETTE[i % MASTER_PALETTE.length]} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// Vertical bar, one column per category (e.g. by date), with axis labels.
+// `barLabels` maps name → a short status word drawn vertically inside the bar.
+export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels }:
+  { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number; xLabel?: string; yLabel?: string; barLabels?: Record<string, string> }) {
+  if (!data.length) return <Empty />;
+  const renderText = (p: { x?: number | string; y?: number | string; width?: number | string; height?: number | string; value?: string | number }) => {
+    const x = Number(p.x) || 0, y = Number(p.y) || 0, width = Number(p.width) || 0, h = Number(p.height) || 0;
+    const txt = barLabels?.[String(p.value)];
+    if (!txt || width <= 0 || h < 28) return null;
+    const cx = x + width / 2, cy = y + h / 2;
+    return (
+      <text x={cx} y={cy} transform={`rotate(-90 ${cx} ${cy})`} textAnchor="middle"
+            dominantBaseline="central" fontSize={11} fontWeight={600} fill="#fff">{txt}</text>
+    );
+  };
+  return (
+    <div style={{ width: "100%", height }}>
+      <ResponsiveContainer>
+        <BarChart data={data} margin={{ left: yLabel ? 24 : 16, right: 16, bottom: xLabel ? 18 : 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+          <XAxis type="category" dataKey="name" tick={AXIS}
+                 label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
+          <YAxis type="number" allowDecimals={false} tick={AXIS}
+                 label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
+          <Tooltip />
+          <Bar dataKey="value" radius={[5, 5, 0, 0]}>
+            {data.map((d, i) => <Cell key={i} fill={colorMap?.[d.name] || MASTER_PALETTE[i % MASTER_PALETTE.length]} />)}
+            {barLabels && <LabelList dataKey="name" content={renderText as never} />}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -67,52 +103,45 @@ export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked
 }
 
 const RAD = Math.PI / 180;
-// Pick black or white text for legibility on a given slice colour.
-function readableOn(hex: string): string {
-  const h = (hex || "").replace("#", "");
-  if (h.length < 6) return "#ffffff";
-  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.6 ? "#1f2937" : "#ffffff";
-}
+const LABEL_MIN = 0.07; // only slices ≥7% get a leader line + label; rest via hover/legend
 
-type LabelProps = {
-  cx?: number; cy?: number; midAngle?: number; innerRadius?: number;
-  outerRadius?: number; percent?: number; name?: string; index?: number;
-};
+// Custom label: draws the leader line AND the text together, so small slices
+// render nothing at all (no dangling lines). Bigger slices get "Name %".
+function donutLabel(p: {
+  cx?: number; cy?: number; midAngle?: number; outerRadius?: number; percent?: number; name?: string;
+}) {
+  const { cx = 0, cy = 0, midAngle = 0, outerRadius = 0, percent = 0, name = "" } = p;
+  if (percent < LABEL_MIN) return null;
+  const cos = Math.cos(-midAngle * RAD), sin = Math.sin(-midAngle * RAD);
+  const sx = cx + outerRadius * cos, sy = cy + outerRadius * sin;          // slice edge
+  const mx = cx + (outerRadius + 16) * cos, my = cy + (outerRadius + 16) * sin; // elbow
+  const right = cos >= 0;
+  const ex = mx + (right ? 16 : -16), ey = my;
+  return (
+    <g>
+      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="rgb(160 170 180)" strokeWidth={1} fill="none" />
+      <circle cx={sx} cy={sy} r={2} fill="rgb(160 170 180)" />
+      <text x={ex + (right ? 4 : -4)} y={ey} textAnchor={right ? "start" : "end"} dominantBaseline="central"
+            fontSize={11} fill="rgb(31 41 55)">
+        {`${name} ${Math.round(percent * 100)}%`}
+      </text>
+    </g>
+  );
+}
 
 export function Donut({ data, colorMap, height = 380 }:
   { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number }) {
   if (!data.length) return <Empty />;
   const colorOf = (name: string, i: number) => colorMap?.[name] || MASTER_PALETTE[i % MASTER_PALETTE.length];
-
-  function renderLabel(p: LabelProps) {
-    const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0, name = "", index = 0 } = p;
-    if (percent < 0.03) return null;                       // tiny slices: legend only
-    const r = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + r * Math.cos(-midAngle * RAD);
-    const y = cy + r * Math.sin(-midAngle * RAD);
-    const fill = readableOn(colorOf(name, index));
-    const fs = Math.max(8, Math.min(12, percent * 80));    // shrink with slice size
-    const showName = percent >= 0.06;                      // only when there's room
-    const nm = name.length > 16 ? name.slice(0, 15) + "…" : name;
-    return (
-      <text x={x} y={y} fill={fill} fontSize={fs} fontWeight={600} textAnchor="middle" dominantBaseline="central">
-        {showName && <tspan x={x} dy="-0.4em">{nm}</tspan>}
-        <tspan x={x} dy={showName ? "1.1em" : "0"}>{Math.round(percent * 100)}%</tspan>
-      </text>
-    );
-  }
-
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="82%" paddingAngle={1}
-               label={renderLabel} labelLine={false}>
+        <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius="60%"
+               paddingAngle={1} labelLine={false} label={donutLabel}>
             {data.map((d, i) => <Cell key={i} fill={colorOf(d.name, i)} />)}
           </Pie>
-          <Tooltip formatter={(v: number, n: string) => [`${v} h`, n]} />
+          <Tooltip formatter={(v, n) => [v as number, n as string]} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
         </PieChart>
       </ResponsiveContainer>

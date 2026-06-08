@@ -18,7 +18,7 @@ export function CardBody({ className, children }: { className?: string; children
 export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
   return (
     <Card>
-      <CardBody>
+      <CardBody className="text-center">
         <div className="text-sm text-muted">{label}</div>
         <div className="mt-1 text-3xl font-semibold tracking-tight">{value}</div>
         {sub && <div className="mt-1 text-xs text-muted">{sub}</div>}

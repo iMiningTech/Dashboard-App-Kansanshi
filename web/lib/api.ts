@@ -47,9 +47,13 @@ export type TimelineRow = {
 
 export type PrestartRow = {
   mmu_id?: string;
+  operator_name?: string;
+  inspection_timestamp?: string;
   checklist_category?: string;
   checklist_item?: string;
   status?: string;
+  fault_number?: string;
+  comment?: string;
   fault_flag?: boolean;
   reporting_date?: string;
 };

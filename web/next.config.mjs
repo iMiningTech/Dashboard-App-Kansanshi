@@ -4,5 +4,6 @@ const nextConfig = {
   output: "export",
   images: { unoptimized: true },
   trailingSlash: true,
+  devIndicators: false,   // hide the dev-mode "N" badge bottom-left
 };
 export default nextConfig;

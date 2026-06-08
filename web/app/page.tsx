@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { api, type DashboardData, type MmuStatus, type PrestartRow, type Asset } from "@/lib/api";
 import { Card, CardBody, Stat, Badge } from "@/components/ui";
-import { ChartCard, BarH, StackedBar, Donut, AreaTrend, DataTable } from "@/components/charts";
+import { ChartCard, BarH, BarV, StackedBar, Donut, AreaTrend, DataTable } from "@/components/charts";
 import {
   filterTimeline, filterPrestart, sessionSummary, sessionsWithEnd, activityTimeline,
   kpis, uniqueSorted, groupSum, groupCount,
@@ -18,7 +18,7 @@ import { fmtTime } from "@/lib/utils";
 
 const VIEWS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "logouts", label: "Missing Shift-Ends", icon: AlertCircle },
+  { id: "logouts", label: "Operator Metrics", icon: User },
   { id: "util", label: "MMU Utilization", icon: BarChart3 },
   { id: "prestart", label: "Pre-start Faults", icon: ClipboardCheck },
   { id: "perf", label: "Shift Performance", icon: Timer },
@@ -40,6 +40,15 @@ function pivot<T>(rows: T[], xKey: (r: T) => string, sKey: (r: T) => string, val
   return { data: xs.map((x) => m.get(x)!), series: Array.from(ss) };
 }
 const round1 = (n: number) => Math.round(n * 10) / 10;
+// Internal / QA submissions hidden from the customer view by default: anything
+// containing "test" (e.g. "Justin James is testing") plus an explicit list of
+// internal/dev names (matched exactly, case-insensitive — so a real operator
+// named e.g. "Justin Banda" is NOT filtered).
+const INTERNAL_OPERATORS = new Set(["justin james"]);
+const isTestOperator = (name?: string | null) => {
+  const n = (name || "").trim().toLowerCase();
+  return /test/i.test(n) || INTERNAL_OPERATORS.has(n);
+};
 
 export default function Dashboard() {
   const [raw, setRaw] = useState<DashboardData | null>(null);
@@ -50,6 +59,8 @@ export default function Dashboard() {
   const [view, setView] = useState<ViewId>("overview");
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [touched, setTouched] = useState(false);  // false = "all" (default); true = explicit selection
+  const [hideTest, setHideTest] = useState(true);  // exclude internal test operators from customer view
   const [lo, setLo] = useState("");
   const [hi, setHi] = useState("");
   const [loBound, setLoBound] = useState("");
@@ -91,33 +102,69 @@ export default function Dashboard() {
       : uniqueSorted((raw?.timeline || []).map((t) => t.mmu_id))),
     [assets, raw]
   );
-  // Effective filter: restrict to active fleet, then to the user's selection.
-  const effMmus = useMemo(() => {
-    if (activeSet.size === 0) return selected;                        // assets not loaded
-    if (selected.size === 0) return activeSet;                         // all active
-    return new Set([...selected].filter((m) => activeSet.has(m)));
-  }, [selected, activeSet]);
+  // Until the user touches the filter, "all" is selected. Then it's explicit
+  // (empty = none). Always intersected with the active billed fleet.
+  const effectiveSel = useMemo(() => (touched ? selected : new Set(allMmus)), [touched, selected, allMmus]);
+  const effMmus = useMemo(
+    () => (activeSet.size ? new Set([...effectiveSel].filter((m) => activeSet.has(m))) : effectiveSel),
+    [effectiveSel, activeSet]
+  );
+
+  // Operator names are not case-sensitive ("Justin" and "justin" are one person).
+  // Canonicalise every operator name to the most common spelling seen, so all
+  // grouping/filtering downstream treats variants as a single operator.
+  const canonOp = useMemo(() => {
+    const counts = new Map<string, Map<string, number>>();
+    const tally = (n?: string | null) => {
+      const s = (n || "").trim();
+      if (!s) return;
+      const k = s.toLowerCase();
+      const m = counts.get(k) || new Map<string, number>();
+      m.set(s, (m.get(s) || 0) + 1);
+      counts.set(k, m);
+    };
+    for (const r of raw?.timeline || []) tally(r.operator_name);
+    for (const r of raw?.prestart || []) tally(r.operator_name);
+    const out = new Map<string, string>();
+    for (const [k, m] of counts) {
+      let best = "", bc = -1;
+      for (const [sp, c] of m) if (c > bc || (c === bc && sp < best)) { best = sp; bc = c; }
+      out.set(k, best);
+    }
+    return (n?: string | null) => out.get((n || "").trim().toLowerCase()) ?? (n || "");
+  }, [raw]);
 
   const d = useMemo(() => {
-    const tl = filterTimeline(raw?.timeline || [], effMmus, lo || "0000", hi || "9999");
-    const ps = filterPrestart(raw?.prestart || [], effMmus, lo || "0000", hi || "9999");
+    // Internal/QA submissions are excluded from the customer view by default;
+    // the sidebar toggle exposes them when needed. Operator names canonicalised.
+    const cn = <T extends { operator_name?: string }>(r: T): T => ({ ...r, operator_name: canonOp(r.operator_name) });
+    const keep = (r: { operator_name?: string }) => !hideTest || !isTestOperator(r.operator_name);
+    const tlSrc = (raw?.timeline || []).filter(keep).map(cn);
+    const psSrc = (raw?.prestart || []).filter(keep).map(cn);
+    const tl = filterTimeline(tlSrc, effMmus, lo || "0000", hi || "9999");
+    const ps = filterPrestart(psSrc, effMmus, lo || "0000", hi || "9999");
     const sessions = sessionSummary(tl);
     const ended = sessionsWithEnd(tl);
     const noEnd = sessions.filter((s) => !s.clocked_out);
     const act = activityTimeline(tl);
     return { tl, ps, sessions, ended, noEnd, act, k: kpis(tl, ps) };
-  }, [raw, effMmus, lo, hi]);
+  }, [raw, effMmus, lo, hi, hideTest, canonOp]);
 
   function toggleMmu(m: string) {
-    setSelected((prev) => { const n = new Set(prev); n.has(m) ? n.delete(m) : n.add(m); return n; });
+    const base = touched ? selected : new Set(allMmus);
+    const n = new Set(base);
+    if (n.has(m)) n.delete(m); else n.add(m);
+    setSelected(n); setTouched(true);
   }
+  function selectAll() { setSelected(new Set(allMmus)); setTouched(true); }
+  function selectNone() { setSelected(new Set()); setTouched(true); }
 
   return (
     <div className="flex min-h-screen">
       {/* ── Sidebar (iMining navy) ── */}
       <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebarfg md:flex">
         <div className="flex h-16 items-center gap-2 px-5">
-          <Image src="/imining_white.png" alt="iMining" width={120} height={28} style={{ height: 26, width: "auto" }} />
+          <Image src="/imining_white.png" alt="iMining" width={240} height={56} style={{ height: 52, width: "auto" }} />
         </div>
         <nav className="px-3">
           {VIEWS.map(({ id, label, icon: Icon }) => (
@@ -144,21 +191,26 @@ export default function Dashboard() {
               className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sidebarfg" />
           </div>
 
-          <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-sidebarfg/60">
+          <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-sidebarfg/60">
             <span>MMUs</span>
-            {selected.size > 0 && <button onClick={() => setSelected(new Set())} className="text-accent2 normal-case">clear</button>}
+            <span className="flex gap-2 normal-case">
+              <button onClick={selectAll} className="text-accent2 hover:underline">All</button>
+              <button onClick={selectNone} className="text-accent2 hover:underline">None</button>
+            </span>
           </div>
-          <div className="max-h-48 space-y-1 overflow-auto pr-1">
+          <div className="max-h-56 space-y-1 overflow-auto pr-1">
             {allMmus.map((m) => (
               <label key={m} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 hover:bg-white/10">
-                <input type="checkbox" checked={selected.size === 0 || selected.has(m)} onChange={() => toggleMmu(m)} />
+                <input type="checkbox" checked={touched ? selected.has(m) : true} onChange={() => toggleMmu(m)} />
                 <span>{m}</span>
               </label>
             ))}
           </div>
-          <div className="mt-3 text-xs text-sidebarfg/50">
-            {d.tl.length.toLocaleString()} activities · {d.ps.length.toLocaleString()} inspections
-          </div>
+
+          <label className="mt-4 flex cursor-pointer items-center gap-2 border-t border-white/10 pt-4 text-xs text-sidebarfg/80">
+            <input type="checkbox" checked={hideTest} onChange={() => setHideTest((v) => !v)} />
+            <span>Hide test data</span>
+          </label>
         </div>
       </aside>
 
@@ -166,7 +218,7 @@ export default function Dashboard() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-6">
           <div className="flex items-center gap-3">
-            <Image src="/orica_logo.png" alt="Orica" width={90} height={28} style={{ height: 24, width: "auto" }} />
+            <Image src="/orica_logo.png" alt="Orica" width={180} height={56} style={{ height: 48, width: "auto" }} />
             <span className="text-lg font-semibold text-fg">MMU Operations — Kansanshi</span>
           </div>
           <button onClick={load} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
@@ -178,22 +230,12 @@ export default function Dashboard() {
           {error && <Card><CardBody><div className="flex items-center gap-2 text-danger"><AlertCircle size={18} /> {error}</div></CardBody></Card>}
           {loading ? <div className="text-sm text-muted">Loading…</div> : (
             <div className="space-y-6">
-              {/* SITE STATUS — always on top */}
-              <SiteStatus assets={assets} live={live} prestart={raw?.prestart || []} />
-              {/* KPIs */}
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <Stat label="Shift sessions" value={d.k.totalSessions} />
-                <Stat label="Active MMUs" value={d.k.activeMmus} />
-                <Stat label="Missing shift-ends" value={d.k.missingLogouts} sub={`${d.k.missingPct.toFixed(0)}% of sessions`} />
-                <Stat label="Pre-start faults" value={d.k.faults} />
-              </div>
-
-              {view === "overview" && <OverviewView d={d} />}
-              {view === "logouts" && <LogoutsView d={d} />}
+              {view === "overview" && <OverviewView d={d} live={live} assets={assets} prestart={raw?.prestart || []} />}
+              {view === "logouts" && <OperatorMetricsView d={d} />}
               {view === "util" && <UtilView d={d} />}
               {view === "prestart" && <PrestartView d={d} />}
               {view === "perf" && <PerfView d={d} />}
-              {view === "timeline" && <TimelineView d={d} selected={selected} />}
+              {view === "timeline" && <TimelineView d={d} selected={effMmus} />}
             </div>
           )}
         </main>
@@ -258,37 +300,219 @@ type D = {
   k: ReturnType<typeof kpis>;
 };
 
-/* ── Overview: a compact mix of the headline charts ── */
-function OverviewView({ d }: { d: D }) {
+/* ── Overview: site tiles + KPIs + live status pie + activity mix ── */
+function OverviewView({ d, live, assets, prestart }:
+  { d: D; live: MmuStatus[]; assets: Asset[]; prestart: PrestartRow[] }) {
+  // Current fleet status — what each active unit is doing RIGHT NOW (live snapshot).
+  const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
+  const fleet: { fleet_no: string }[] = assets.length ? assets : live.map((m) => ({ fleet_no: m.fleet_no }));
+  const stateCount: Record<string, number> = {};
+  for (const a of fleet) {
+    const m = liveByFleet.get(a.fleet_no);
+    const state = !m ? "No data"
+      : (m.status || "").toUpperCase() !== "ON_SHIFT" ? "Off shift"
+      : (m.last_activity || "On shift");
+    stateCount[state] = (stateCount[state] || 0) + 1;
+  }
+  const statusData = Object.entries(stateCount).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  const statusColors: Record<string, string> = { ...ACTIVITY_COLOURS, "On shift": "#59A14F", "Off shift": "#BAB0AC", "No data": "#D7DBE0" };
+
   const mix = groupSum(d.act, (r) => r.activity_type || "Other", (r) => r.duration_hours)
     .map((x) => ({ name: x.name, value: round1(x.value) })).sort((a, b) => b.value - a.value);
+
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-      <ChartCard title="Fleet-wide activity mix" subtitle="Hours by activity (capped 4h/event)">
-        <Donut data={mix} colorMap={ACTIVITY_COLOURS} />
-      </ChartCard>
-      <ChartCard title="Activity hours by category">
-        <BarH data={mix.slice(0, 10)} colorMap={ACTIVITY_COLOURS} />
-      </ChartCard>
+    <div className="space-y-6">
+      <SiteStatus assets={assets} live={live} prestart={prestart} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="Shift sessions" value={d.k.totalSessions} />
+        <Stat label="Active MMUs" value={d.k.activeMmus} />
+        <Stat label="Missing shift-ends" value={d.k.missingLogouts} sub={`${d.k.missingPct.toFixed(0)}% of sessions`} />
+        <Stat label="Pre-start faults" value={d.k.faults} />
+      </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ChartCard title="Current fleet status" subtitle="What each unit is doing right now (live)">
+          <Donut data={statusData} colorMap={statusColors} />
+        </ChartCard>
+        <ChartCard title="Fleet-wide activity mix" subtitle="Share of logged hours over the selected range">
+          <Donut data={mix} colorMap={ACTIVITY_COLOURS} />
+        </ChartCard>
+      </div>
     </div>
   );
 }
 
-/* ── Missing shift-ends ── */
-function LogoutsView({ d }: { d: D }) {
-  const byOp = groupCount(d.noEnd, (s) => s.operator_name || "—").sort((a, b) => a.value - b.value);
-  const byDate = groupCount(d.noEnd, (s) => s.reporting_date || "—").sort((a, b) => a.name.localeCompare(b.name));
-  const rows = d.noEnd.map((s) => ({ Operator: s.operator_name, MMU: s.mmu_id, Date: s.reporting_date, Start: fmtTime(s.shift_start || undefined) }));
+/* ── Operator Metrics ──
+   Per-operator behaviour over the filtered period: pre-start compliance,
+   missing shift-ends, benches loaded, and a per-operator daily shift-quality
+   timeline. Pre-start rows carry operator_name, so pre-starts are matched to a
+   shift by operator + MMU + reporting date (no cross-shift ambiguity). */
+const GREEN = "#59A14F", AMBER = "#F1A340", RED = "#E15759";
+
+function OperatorPicker({ all, selected, onChange }:
+  { all: string[]; selected: Set<string>; onChange: (s: Set<string>) => void }) {
+  const [open, setOpen] = useState(false);
+  const label = selected.size === all.length ? "All operators"
+    : selected.size === 0 ? "No operators"
+    : `${selected.size} of ${all.length} operators`;
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-1.5 text-sm hover:bg-bg">
+        {label} <span className="text-muted">▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute z-20 mt-1 w-64 rounded-xl border border-border bg-surface p-2 shadow-lg">
+            <div className="mb-1 flex justify-between px-1 text-xs">
+              <button onClick={() => onChange(new Set(all))} className="text-accent hover:underline">All</button>
+              <button onClick={() => onChange(new Set())} className="text-accent hover:underline">None</button>
+            </div>
+            <div className="max-h-64 overflow-auto">
+              {all.map((o) => (
+                <label key={o} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-bg">
+                  <input type="checkbox" checked={selected.has(o)}
+                    onChange={() => { const n = new Set(selected); n.has(o) ? n.delete(o) : n.add(o); onChange(n); }} />
+                  <span>{o}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function OperatorMetricsView({ d }: { d: D }) {
+  const allOps = useMemo(() => uniqueSorted(d.sessions.map((s) => s.operator_name)), [d.sessions]);
+  const [opSel, setOpSel] = useState<Set<string> | null>(null);  // null = all
+  const effOps = opSel ?? new Set(allOps);
+  const has = (op?: string | null) => effOps.has(op || "—");
+
+  // Pre-start presence keyed by operator + MMU + reporting date.
+  const keyOf = (op?: string | null, mmu?: string | null, date?: string | null) =>
+    `${(op || "").trim()}|${(mmu || "").trim()}|${(date || "").slice(0, 10)}`;
+  const psKeys = useMemo(() => new Set(d.ps.map((p) => keyOf(p.operator_name, p.mmu_id, p.reporting_date))), [d.ps]);
+
+  const sessions = d.sessions.filter((s) => has(s.operator_name));
+  const noEnd = d.noEnd.filter((s) => has(s.operator_name));
+
+  // Per-operator rollup: shifts (logins), pre-starts done, shift-ends done.
+  const opMap = new Map<string, { shifts: number; prestart: number; ended: number }>();
+  for (const s of sessions) {
+    const op = s.operator_name || "—";
+    const r = opMap.get(op) || { shifts: 0, prestart: 0, ended: 0 };
+    r.shifts++;
+    if (psKeys.has(keyOf(s.operator_name, s.mmu_id, s.reporting_date))) r.prestart++;
+    if (s.clocked_out) r.ended++;
+    opMap.set(op, r);
+  }
+  const opStats = Array.from(opMap, ([operator, r]) => ({ operator, ...r, compliance: r.shifts ? r.prestart / r.shifts : 0 }));
+
+  const benchAll = d.act.filter((a) => a.activity_type === "Loading Explosives" && has(a.operator_name));
+  const benches = benchAll.length;
+  const operators = opStats.length;
+  const totalShifts = sessions.length;
+  const totalPrestart = opStats.reduce((n, o) => n + o.prestart, 0);
+  const overallCompliance = totalShifts ? totalPrestart / totalShifts : 0;
+
+  // Operators to follow up: ≥3 shifts and under 60% pre-start compliance.
+  const flagged = opStats.filter((o) => o.shifts >= 3 && o.compliance < 0.6).sort((a, b) => a.compliance - b.compliance);
+
+  const byOp = groupCount(noEnd, (s) => s.operator_name || "—").sort((a, b) => a.value - b.value);
+  const byDate = groupCount(noEnd, (s) => s.reporting_date || "—").sort((a, b) => a.name.localeCompare(b.name));
+
+  const compBars = opStats.map((o) => ({ name: o.operator, value: Math.round(o.compliance * 100) })).sort((a, b) => a.value - b.value);
+  const compColors: Record<string, string> = {};
+  compBars.forEach((b) => (compColors[b.name] = b.value < 60 ? RED : b.value < 85 ? AMBER : GREEN));
+
+  const benchByOp = groupCount(benchAll, (a) => a.operator_name || "—").sort((a, b) => b.value - a.value);
+
+  // Single-operator daily shift-quality timeline (the per-operator drilldown).
+  const single = effOps.size === 1 ? [...effOps][0] : null;
+  const dayMap = new Map<string, { prestart: boolean; ended: boolean }>();
+  if (single) {
+    for (const s of d.sessions.filter((s) => (s.operator_name || "—") === single)) {
+      const day = (s.reporting_date || "").slice(0, 10);
+      if (!day) continue;
+      const r = dayMap.get(day) || { prestart: false, ended: false };
+      if (psKeys.has(keyOf(s.operator_name, s.mmu_id, s.reporting_date))) r.prestart = true;
+      if (s.clocked_out) r.ended = true;
+      dayMap.set(day, r);
+    }
+  }
+  const dayData = Array.from(dayMap, ([day, r]) => {
+    const score = (r.prestart ? 1 : 0) + (r.ended ? 1 : 0);  // 0,1,2
+    return { name: day, value: score + 1 };                  // 1=poor, 2=partial, 3=good
+  }).sort((a, b) => a.name.localeCompare(b.name));
+  const dayColors: Record<string, string> = {};
+  const dayLabels: Record<string, string> = {};
+  for (const [day, r] of dayMap) {
+    dayColors[day] = r.prestart && r.ended ? GREEN : r.prestart || r.ended ? AMBER : RED;
+    dayLabels[day] = r.prestart && r.ended ? "Complete"
+      : !r.prestart && r.ended ? "No pre-start"
+      : r.prestart && !r.ended ? "No shift-end"
+      : "Neither";
+  }
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Missing shift-end logs by operator"><BarH data={byOp} colorMap={paletteMap(byOp.map((x) => x.name))} /></ChartCard>
-        <ChartCard title="Missing shift-end logs by date"><BarH data={byDate} colorMap={paletteMap(byDate.map((x) => x.name))} /></ChartCard>
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-muted">Operator filter:</span>
+        <OperatorPicker all={allOps} selected={effOps} onChange={setOpSel} />
       </div>
-      <ChartCard title="Session detail">
-        <DataTable columns={[{ key: "Operator", label: "Operator" }, { key: "MMU", label: "MMU" }, { key: "Date", label: "Date" }, { key: "Start", label: "Shift Start" }]}
-          rows={rows} csvName="missing_shift_end.csv" />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="Operators on shift" value={operators} sub="ran ≥1 shift in range" />
+        <Stat label="Benches loaded" value={benches} sub="loading-explosives events" />
+        <Stat label="Benches per operator" value={operators ? round1(benches / operators) : 0} />
+        <Stat label="Pre-start compliance" value={`${Math.round(overallCompliance * 100)}%`} sub={`${totalPrestart} of ${totalShifts} shifts`} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ChartCard title="Missing shift-end logs by operator"><BarH data={byOp} colorMap={paletteMap(byOp.map((x) => x.name))} xLabel="Sessions Without Shift End" yLabel="Operator" /></ChartCard>
+        <ChartCard title="Missing shift-end logs by date"><BarV data={byDate} colorMap={paletteMap(byDate.map((x) => x.name))} xLabel="Date" yLabel="Sessions Without Shift End" /></ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ChartCard title="Pre-start compliance by operator" subtitle="Share of shifts with a matching pre-start · green ≥85% · amber ≥60% · red <60%">
+          <BarH data={compBars} colorMap={compColors} xLabel="Pre-start compliance (%)" yLabel="Operator" />
+        </ChartCard>
+        <Card>
+          <CardBody>
+            <div className="mb-1 text-sm font-semibold text-fg">Operators to follow up</div>
+            <div className="mb-3 text-xs text-muted">≥3 shifts with under 60% pre-start compliance</div>
+            {flagged.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted">No operators flagged — pre-start compliance looks healthy.</div>
+            ) : (
+              <div className="space-y-2">
+                {flagged.map((o) => (
+                  <div key={o.operator} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                    <span>{o.operator}</span>
+                    <span className="flex items-center gap-2 text-muted">{o.prestart}/{o.shifts} shifts <Badge tone="danger">{Math.round(o.compliance * 100)}%</Badge></span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      </div>
+
+      <ChartCard title="Benches loaded by operator" subtitle="Each loading-explosives event ≈ one bench loaded">
+        <BarH data={benchByOp} colorMap={paletteMap(benchByOp.map((x) => x.name))} xLabel="Benches loaded" yLabel="Operator" />
       </ChartCard>
+
+      {single ? (
+        <ChartCard title={`Daily shift quality — ${single}`}
+          subtitle="Per day worked · green = pre-start + shift-end done · amber = one missing · red = both missing">
+          <BarV data={dayData} colorMap={dayColors} barLabels={dayLabels} xLabel="Date" yLabel="Shift quality (3 = full)" height={300} />
+        </ChartCard>
+      ) : (
+        <Card><CardBody>
+          <div className="py-10 text-center text-sm text-muted">Select a single operator in the filter above to see their day-by-day shift-quality timeline.</div>
+        </CardBody></Card>
+      )}
     </div>
   );
 }
