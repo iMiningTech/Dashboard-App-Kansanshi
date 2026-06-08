@@ -6,7 +6,7 @@ import {
   LayoutDashboard, AlertCircle, AlertTriangle, BarChart3, ClipboardCheck, Timer, CalendarRange,
   User, Activity, RefreshCw, Truck,
 } from "lucide-react";
-import { api, type DashboardData, type MmuStatus, type PrestartRow } from "@/lib/api";
+import { api, type DashboardData, type MmuStatus, type PrestartRow, type Asset } from "@/lib/api";
 import { Card, CardBody, Stat, Badge } from "@/components/ui";
 import { ChartCard, BarH, StackedBar, Donut, AreaTrend, DataTable } from "@/components/charts";
 import {
@@ -44,6 +44,7 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 export default function Dashboard() {
   const [raw, setRaw] = useState<DashboardData | null>(null);
   const [live, setLive] = useState<MmuStatus[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewId>("overview");
@@ -57,8 +58,12 @@ export default function Dashboard() {
   async function load() {
     setLoading(true); setError(null);
     try {
-      const [d, m] = await Promise.all([api.dashboard("90d"), api.liveMmu()]);
-      setRaw(d); setLive(m.items || []);
+      const [d, m, a] = await Promise.all([
+        api.dashboard("90d"),
+        api.liveMmu(),
+        api.assets().catch(() => ({ items: [] as Asset[] })), // graceful if not deployed yet
+      ]);
+      setRaw(d); setLive(m.items || []); setAssets(a.items || []);
       const dates = uniqueSorted((d.timeline || []).map((t) => (t.reporting_date || "").slice(0, 10)));
       const min = dates[0] || "", max = dates[dates.length - 1] || "";
       setLoBound(min); setHiBound(max); setLo(min); setHi(max);
@@ -77,18 +82,31 @@ export default function Dashboard() {
     setLo(d0.toISOString().slice(0, 10)); setHi(hiBound);
   }
 
-  const allMmus = useMemo(() => uniqueSorted((raw?.timeline || []).map((t) => t.mmu_id)), [raw]);
+  // The active billed fleet drives the MMU universe; fall back to data-derived
+  // list if the assets registry isn't deployed yet.
+  const activeSet = useMemo(() => new Set(assets.map((a) => a.fleet_no)), [assets]);
+  const allMmus = useMemo(
+    () => (assets.length
+      ? [...assets].sort((a, b) => Number(a.sort_order ?? 999) - Number(b.sort_order ?? 999)).map((a) => a.fleet_no)
+      : uniqueSorted((raw?.timeline || []).map((t) => t.mmu_id))),
+    [assets, raw]
+  );
+  // Effective filter: restrict to active fleet, then to the user's selection.
+  const effMmus = useMemo(() => {
+    if (activeSet.size === 0) return selected;                        // assets not loaded
+    if (selected.size === 0) return activeSet;                         // all active
+    return new Set([...selected].filter((m) => activeSet.has(m)));
+  }, [selected, activeSet]);
 
-  // Filtered + derived
   const d = useMemo(() => {
-    const tl = filterTimeline(raw?.timeline || [], selected, lo || "0000", hi || "9999");
-    const ps = filterPrestart(raw?.prestart || [], selected, lo || "0000", hi || "9999");
+    const tl = filterTimeline(raw?.timeline || [], effMmus, lo || "0000", hi || "9999");
+    const ps = filterPrestart(raw?.prestart || [], effMmus, lo || "0000", hi || "9999");
     const sessions = sessionSummary(tl);
     const ended = sessionsWithEnd(tl);
     const noEnd = sessions.filter((s) => !s.clocked_out);
     const act = activityTimeline(tl);
     return { tl, ps, sessions, ended, noEnd, act, k: kpis(tl, ps) };
-  }, [raw, selected, lo, hi]);
+  }, [raw, effMmus, lo, hi]);
 
   function toggleMmu(m: string) {
     setSelected((prev) => { const n = new Set(prev); n.has(m) ? n.delete(m) : n.add(m); return n; });
@@ -161,7 +179,7 @@ export default function Dashboard() {
           {loading ? <div className="text-sm text-muted">Loading…</div> : (
             <div className="space-y-6">
               {/* SITE STATUS — always on top */}
-              <SiteStatus live={live} prestart={raw?.prestart || []} />
+              <SiteStatus assets={assets} live={live} prestart={raw?.prestart || []} />
               {/* KPIs */}
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <Stat label="Shift sessions" value={d.k.totalSessions} />
@@ -184,33 +202,39 @@ export default function Dashboard() {
   );
 }
 
-/* ── Site status (real-time current_mmu) ── */
-function SiteStatus({ live, prestart }: { live: MmuStatus[]; prestart: PrestartRow[] }) {
-  // (MMU, date) pairs that have a pre-start on record — to flag units whose
-  // last shift had no pre-start inspection logged.
-  const prestartKeys = new Set(
-    prestart.map((p) => `${p.mmu_id}|${(p.reporting_date || "").slice(0, 10)}`)
-  );
+/* ── Site status: one fixed tile per active billed asset, merged with live state ── */
+function SiteStatus({ assets, live, prestart }: { assets: Asset[]; live: MmuStatus[]; prestart: PrestartRow[] }) {
+  const prestartKeys = new Set(prestart.map((p) => `${p.mmu_id}|${(p.reporting_date || "").slice(0, 10)}`));
+  const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
+  // Base list is the active billed fleet; fall back to live list if the assets
+  // registry isn't deployed yet.
+  const base: Asset[] = assets.length
+    ? [...assets].sort((a, b) => Number(a.sort_order ?? 999) - Number(b.sort_order ?? 999))
+    : live.map((m) => ({ fleet_no: m.fleet_no, display_name: m.fleet_no }));
+
   return (
     <div>
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg"><Truck size={16} /> Site Status — current snapshot</div>
-      {live.length === 0 ? <div className="text-sm text-muted">No live MMU state yet.</div> : (
+      {base.length === 0 ? <div className="text-sm text-muted">No assets configured.</div> : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {live.map((m) => {
-            const active = (m.status || "").toUpperCase() === "ON_SHIFT";
-            const day = (m.last_seen || "").slice(0, 10);
-            const noPrestart = !!m.fleet_no && !!day && !prestartKeys.has(`${m.fleet_no}|${day}`);
+          {base.map((asset) => {
+            const m = liveByFleet.get(asset.fleet_no);
+            const onShift = (m?.status || "").toUpperCase() === "ON_SHIFT";
+            const day = (m?.last_seen || "").slice(0, 10);
+            const noPrestart = !!m && !!day && !prestartKeys.has(`${asset.fleet_no}|${day}`);
             return (
-              <Card key={m.fleet_no}>
+              <Card key={asset.fleet_no}>
                 <CardBody>
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-fg">{m.fleet_no}</span>
-                    <Badge tone={active ? "ok" : "muted"}>{active ? "On shift" : "Off shift"}</Badge>
+                    <span className="font-semibold text-fg">{asset.display_name || asset.fleet_no}</span>
+                    <Badge tone={!m ? "muted" : onShift ? "ok" : "muted"}>
+                      {!m ? "No data" : onShift ? "On shift" : "Off shift"}
+                    </Badge>
                   </div>
-                  <div className="mt-2 flex items-center gap-2 text-sm text-muted"><User size={14} /> {m.operator || m.operator_last || "—"}</div>
-                  <div className="mt-1 flex items-center gap-2 text-sm text-fg"><Activity size={14} className="text-accent" /> {m.last_activity || "—"}</div>
+                  <div className="mt-2 flex items-center gap-2 text-sm text-muted"><User size={14} /> {m?.operator || m?.operator_last || "—"}</div>
+                  <div className="mt-1 flex items-center gap-2 text-sm text-fg"><Activity size={14} className="text-accent" /> {m?.last_activity || "—"}</div>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-muted">{fmtTime(m.last_seen)}</span>
+                    <span className="text-xs text-muted">{m ? fmtTime(m.last_seen) : "No activity logged"}</span>
                     {noPrestart && (
                       <span className="flex items-center gap-1 text-xs font-medium text-warn" title="No pre-start inspection logged for this shift">
                         <AlertTriangle size={14} /> No pre-start

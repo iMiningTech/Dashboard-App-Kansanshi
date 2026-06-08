@@ -13,6 +13,14 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
+export type Asset = {
+  fleet_no: string;
+  display_name?: string;
+  active?: boolean;
+  plant?: string;
+  sort_order?: number;
+};
+
 export type MmuStatus = {
   fleet_no: string;
   status?: string;
@@ -56,6 +64,7 @@ export type DashboardData = {
 };
 
 export const api = {
+  assets: () => get<{ count: number; items: Asset[] }>("/assets"),
   liveMmu: () => get<{ count: number; items: MmuStatus[] }>("/live/mmu"),
   liveSessions: () => get<{ count: number; items: Record<string, unknown>[] }>("/live/sessions"),
   dashboard: (window = "30d") => get<DashboardData>(`/dashboard?window=${window}`),
