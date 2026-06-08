@@ -33,6 +33,8 @@ export type TimelineRow = {
   duration_minutes?: number;
   start_timestamp?: string;
   reporting_date?: string;
+  is_exception?: boolean;
+  exception_reason?: string;
 };
 
 export type PrestartRow = {

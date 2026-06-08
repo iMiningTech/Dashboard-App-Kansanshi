@@ -63,6 +63,10 @@ def parse_timestamp(value, timezone: Optional[str] = None) -> pd.Timestamp:
         ts = pd.to_datetime(val_str, dayfirst=not iso_like)
         if timezone:
             ts = ts.tz_localize(timezone) if ts.tzinfo is None else ts.tz_convert(timezone)
+        elif ts is not pd.NaT and getattr(ts, "tzinfo", None) is not None:
+            # Strip tz so tz-aware (received_at "…Z") and naive (submitted_at)
+            # timestamps never mix — mixing raises and breaks session/duration math.
+            ts = ts.tz_localize(None)
         return ts
     except Exception:
         pass
