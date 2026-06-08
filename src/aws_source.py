@@ -53,6 +53,8 @@ TEXT_TOOLBOX_DETAIL = "Questions Or Concerns (Optional):"
 # Conditional fields shown when activity == "Loading Explosives" (#input_37 etc.)
 TEXT_BENCH_LOCATION = "Bench Location:"
 TEXT_SPECIFY = "Specify:"
+# Conditional field shown when activity == "Breakdown"
+TEXT_BREAKDOWN_TYPE = "Breakdown Type:"
 
 _QID_RE = re.compile(r"^q(\d+)_")
 
@@ -239,12 +241,15 @@ def build_frames(records: List[Dict[str, Any]], config: dict):
             tmap = _text_value_map(rec)
             raw = rec.get("raw_submission") or rec.get("data") or {}
             base["activity_type"] = n.get("activity") or ""
-            base["activity_category"] = tmap.get(TEXT_BREAKDOWN_CATEGORY) or ""
-            base["activity_detail"] = tmap.get(TEXT_ADDITIONAL_INFO) or ""
             # Prefer schema-text match; fall back to the raw key name (records
-            # often arrive with no schema, in which case tmap is empty).
+            # often arrive with no schema, in which case tmap is empty). Raw keys
+            # confirmed via scripts/diag_event.py: q33_breakdownCategory,
+            # q34_breakdownType, q5_additionalInformation, q37_benchLocation, q38_specify.
+            base["activity_category"] = tmap.get(TEXT_BREAKDOWN_CATEGORY) or _raw_value_by_name(raw, "breakdowncategory")
+            base["activity_detail"] = tmap.get(TEXT_ADDITIONAL_INFO) or _raw_value_by_name(raw, "additionalinformation", "additionalinfo")
             base["bench_location"] = tmap.get(TEXT_BENCH_LOCATION) or _raw_value_by_name(raw, "benchlocation", "bench")
             base["specify"] = tmap.get(TEXT_SPECIFY) or _raw_value_by_name(raw, "specify")
+            base["breakdown_type"] = tmap.get(TEXT_BREAKDOWN_TYPE) or _raw_value_by_name(raw, "breakdowntype")
             event_rows.append(base)
         elif stype == "toolbox_talk":
             tmap = _text_value_map(rec)

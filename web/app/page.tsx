@@ -641,6 +641,19 @@ function PrestartView({ d }: { d: D }) {
     .map((x) => ({ name: x.name.length > 48 ? x.name.slice(0, 48) + "…" : x.name, value: x.value }));
   const rows = faults.map((p) => ({ MMU: p.mmu_id, Date: p.reporting_date, Category: p.checklist_category, Item: p.checklist_item }));
 
+  // Breakdown log: one row per breakdown event (newest first).
+  const breakdownRows = breakdowns
+    .map((b) => ({
+      Date: (b.reporting_date || "").slice(0, 10),
+      Time: (b.start_timestamp || "").slice(11, 16) || "—",
+      MMU: b.mmu_id,
+      Category: b.activity_category || "—",
+      Type: b.breakdown_type || "—",
+      "Additional info": b.activity_detail || "—",
+      _ts: b.start_timestamp || "",
+    }))
+    .sort((a, b) => String(b._ts).localeCompare(String(a._ts)));
+
   // ── Used-after-fault: an MMU flagged with a pre-start fault that still
   // loaded explosives later the same day (after the flag time). ──
   const ms = (s?: string) => { const t = Date.parse(s || ""); return isNaN(t) ? null : t; };
@@ -704,6 +717,12 @@ function PrestartView({ d }: { d: D }) {
         <DataTable
           columns={[{ key: "Date", label: "Date" }, { key: "MMU", label: "MMU" }, { key: "Flagged", label: "Fault flagged" }, { key: "Faults", label: "Faults" }, { key: "First use after", label: "First load after" }, { key: "Uses after", label: "Loads after" }, { key: "Operator", label: "Operator" }]}
           rows={incidents} csvName="loaded_after_fault.csv" />
+      </ChartCard>
+
+      <ChartCard title="Breakdown log" subtitle="Every breakdown event with its category, type and additional info">
+        <DataTable
+          columns={[{ key: "Date", label: "Date" }, { key: "Time", label: "Time" }, { key: "MMU", label: "MMU" }, { key: "Category", label: "Breakdown category" }, { key: "Type", label: "Breakdown type" }, { key: "Additional info", label: "Additional info" }]}
+          rows={breakdownRows} csvName="breakdowns.csv" />
       </ChartCard>
 
       <ChartCard title="Pre-start fault records">

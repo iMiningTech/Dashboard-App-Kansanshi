@@ -41,6 +41,7 @@ export type TimelineRow = {
   activity_detail?: string;
   bench_location?: string;
   specify?: string;
+  breakdown_type?: string;
   duration_minutes?: number;
   start_timestamp?: string;
   reporting_date?: string;
