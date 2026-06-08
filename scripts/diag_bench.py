@@ -19,34 +19,69 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import json  # noqa: E402
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
 from src.aws_source import (  # noqa: E402
-    fetch_clean_records, _norm, _text_value_map, _index_raw_by_qid,
+    _norm, _text_value_map, _index_raw_by_qid, _raw_value_by_name, settings,
     FORM_TYPE_BY_ID, TEXT_BENCH_LOCATION, TEXT_SPECIFY,
 )
 
 EVENT_FORMS = [fid for fid, t in FORM_TYPE_BY_ID.items() if t == "event_log"]
 
 
-def main(window_days: int = 90, show: int = 5):
+def _scan_event_loading(window_days: int, want: int):
+    """Targeted: query ONLY the event form GSI, read S3 objects one at a time,
+    and stop as soon as we've collected `want` loading events."""
+    import boto3
+    cfg = settings()
+    ddb = boto3.client("dynamodb", region_name=cfg["region"])
+    s3 = boto3.client("s3", region_name=cfg["region"])
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=window_days)
+    found, scanned = [], 0
+    for form_id in EVENT_FORMS:
+        kwargs = {
+            "TableName": cfg["submissions_table"], "IndexName": "form-received-index",
+            "KeyConditionExpression": "form_id = :f AND received_at BETWEEN :s AND :e",
+            "ScanIndexForward": False,  # newest first
+            "ExpressionAttributeValues": {":f": {"S": form_id},
+                ":s": {"S": start.isoformat()}, ":e": {"S": end.isoformat()}},
+        }
+        while True:
+            resp = ddb.query(**kwargs)
+            for it in resp.get("Items", []):
+                ck = it.get("clean_key", {}).get("S")
+                if not ck:
+                    continue
+                scanned += 1
+                if scanned % 25 == 0:
+                    print(f"    ...scanned {scanned} event records, {len(found)} loading so far", flush=True)
+                try:
+                    obj = s3.get_object(Bucket=cfg["bucket"], Key=ck)
+                    rec = json.loads(obj["Body"].read())
+                except Exception:
+                    continue
+                if "loading" in (_norm(rec).get("activity") or "").strip().lower():
+                    found.append(rec)
+                    if len(found) >= want:
+                        return found, scanned
+            if "LastEvaluatedKey" in resp:
+                kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+            else:
+                break
+    return found, scanned
+
+
+def main(window_days: int = 30, show: int = 5):
     import os
     print(">>> diag_bench starting", flush=True)
     print(f"    DATA_BUCKET={os.environ.get('DATA_BUCKET')!r}", flush=True)
     print(f"    SUBMISSIONS_TABLE={os.environ.get('SUBMISSIONS_TABLE')!r}", flush=True)
     print(f"    AWS_PROFILE={os.environ.get('AWS_PROFILE')!r} AWS_REGION={os.environ.get('AWS_REGION')!r}", flush=True)
-    print(f"    fetching {window_days}d of records (reading S3, may take a moment)...", flush=True)
-    recs = fetch_clean_records(window_days=window_days)
-    print(f"fetched {len(recs)} clean records over {window_days}d\n", flush=True)
-
-    loading = []
-    for r in recs:
-        fid = str(r.get("form_id") or _norm(r).get("form_id") or "")
-        if fid not in EVENT_FORMS:
-            continue
-        act = (_norm(r).get("activity") or "").strip().lower()
-        if "loading" in act:
-            loading.append(r)
-
-    print(f"found {len(loading)} 'Loading Explosives' event records\n")
+    print(f"    scanning Event Log form for loading events ({window_days}d, newest first)...", flush=True)
+    loading, scanned = _scan_event_loading(window_days, show)
+    print(f"\nscanned {scanned} event records; found {len(loading)} 'Loading Explosives'\n", flush=True)
     if not loading:
         print("No loading events in this window — widen window_days or check activity label.")
         return
@@ -74,6 +109,9 @@ def main(window_days: int = 90, show: int = 5):
             print(f"    {'>>' if hit else '  '} {k!r}: {v!r}")
         print(f"  raw keys (first 25): {list(raw.keys())[:25]}")
         print(f"  by_qid keys: {sorted(by_qid.keys())}")
+        print("  >> CAPTURED (what the pipeline now extracts):")
+        print(f"       bench_location = {_raw_value_by_name(raw, 'benchlocation', 'bench')!r}")
+        print(f"       specify        = {_raw_value_by_name(raw, 'specify')!r}")
         print("-" * 70)
 
 

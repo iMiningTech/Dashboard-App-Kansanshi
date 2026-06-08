@@ -161,6 +161,32 @@ def _index_raw_by_qid(raw: Dict[str, Any]) -> Dict[str, Any]:
             out[m.group(1)] = v
     return out
 
+
+def _scalar(v: Any) -> str:
+    """Coerce a raw answer value to a display string (dropdowns are scalars;
+    composites/lists are flattened)."""
+    if isinstance(v, dict):
+        for vv in v.values():
+            if isinstance(vv, (str, int, float)) and str(vv).strip():
+                return str(vv).strip()
+        return ""
+    if isinstance(v, list):
+        return ", ".join(str(x).strip() for x in v if str(x).strip())
+    return str(v).strip() if v is not None else ""
+
+
+def _raw_value_by_name(raw: Dict[str, Any], *fragments: str) -> str:
+    """Find a raw_submission value by the field-name part of its key, e.g.
+    'q37_benchLocation37' matches 'benchlocation'/'bench'. Robust to qid changes
+    and works when the record carries no schema (many live records don't)."""
+    for k, v in (raw or {}).items():
+        name = (k.split("_", 1)[1] if "_" in k else k).lower()
+        if any(f in name for f in fragments):
+            s = _scalar(v)
+            if s:
+                return s
+    return ""
+
 def _text_value_map(rec: Dict[str, Any]) -> Dict[str, Any]:
     """{question_text: scalar value} — for event/toolbox extra fields."""
     schema = rec.get("schema") or {}
@@ -211,11 +237,14 @@ def build_frames(records: List[Dict[str, Any]], config: dict):
             shift_rows.append(base)
         elif stype == "event_log":
             tmap = _text_value_map(rec)
+            raw = rec.get("raw_submission") or rec.get("data") or {}
             base["activity_type"] = n.get("activity") or ""
             base["activity_category"] = tmap.get(TEXT_BREAKDOWN_CATEGORY) or ""
             base["activity_detail"] = tmap.get(TEXT_ADDITIONAL_INFO) or ""
-            base["bench_location"] = tmap.get(TEXT_BENCH_LOCATION) or ""
-            base["specify"] = tmap.get(TEXT_SPECIFY) or ""
+            # Prefer schema-text match; fall back to the raw key name (records
+            # often arrive with no schema, in which case tmap is empty).
+            base["bench_location"] = tmap.get(TEXT_BENCH_LOCATION) or _raw_value_by_name(raw, "benchlocation", "bench")
+            base["specify"] = tmap.get(TEXT_SPECIFY) or _raw_value_by_name(raw, "specify")
             event_rows.append(base)
         elif stype == "toolbox_talk":
             tmap = _text_value_map(rec)
