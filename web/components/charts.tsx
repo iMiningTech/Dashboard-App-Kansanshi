@@ -66,6 +66,24 @@ export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked
   );
 }
 
+const RAD = Math.PI / 180;
+function sliceLabel(p: {
+  cx?: number; cy?: number; midAngle?: number; innerRadius?: number;
+  outerRadius?: number; percent?: number; name?: string;
+}) {
+  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0, name = "" } = p;
+  if (percent < 0.05) return null; // small slices stay in the legend, not labelled
+  const r = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + r * Math.cos(-midAngle * RAD);
+  const y = cy + r * Math.sin(-midAngle * RAD);
+  return (
+    <text x={x} y={y} fill="#fff" fontSize={10.5} fontWeight={600} textAnchor="middle" dominantBaseline="central">
+      <tspan x={x} dy="-0.4em">{name}</tspan>
+      <tspan x={x} dy="1.1em">{Math.round(percent * 100)}%</tspan>
+    </text>
+  );
+}
+
 export function Donut({ data, colorMap, height = 380 }:
   { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number }) {
   if (!data.length) return <Empty />;
@@ -73,13 +91,12 @@ export function Donut({ data, colorMap, height = 380 }:
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="52%" outerRadius="80%" paddingAngle={1}
-               label={(e: { percent?: number }) => ((e.percent ?? 0) >= 0.04 ? `${Math.round((e.percent ?? 0) * 100)}%` : "")}
-               labelLine={false}>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="82%" paddingAngle={1}
+               label={sliceLabel} labelLine={false}>
             {data.map((d, i) => <Cell key={i} fill={colorMap?.[d.name] || MASTER_PALETTE[i % MASTER_PALETTE.length]} />)}
           </Pie>
-          <Tooltip formatter={(v: number, n: string) => [v, n]} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Tooltip formatter={(v: number, n: string) => [`${v} h`, n]} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
         </PieChart>
       </ResponsiveContainer>
     </div>

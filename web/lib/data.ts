@@ -26,11 +26,19 @@ export function inRange(d: string | null | undefined, lo: string, hi: string): b
   return day >= lo && day <= hi;
 }
 
+// Rows with no MMU assigned are junk (operator didn't use the app properly) and
+// are never displayed — they're captured separately as data-quality exceptions.
 export function filterTimeline(rows: TimelineRow[], mmus: Set<string>, lo: string, hi: string): TimelineRow[] {
-  return rows.filter((r) => inRange(r.reporting_date, lo, hi) && (mmus.size === 0 || mmus.has(r.mmu_id || "")));
+  return rows.filter((r) => {
+    const mmu = (r.mmu_id || "").trim();
+    return mmu !== "" && inRange(r.reporting_date, lo, hi) && (mmus.size === 0 || mmus.has(mmu));
+  });
 }
 export function filterPrestart(rows: PrestartRow[], mmus: Set<string>, lo: string, hi: string): PrestartRow[] {
-  return rows.filter((r) => inRange(r.reporting_date, lo, hi) && (mmus.size === 0 || mmus.has(r.mmu_id || "")));
+  return rows.filter((r) => {
+    const mmu = (r.mmu_id || "").trim();
+    return mmu !== "" && inRange(r.reporting_date, lo, hi) && (mmus.size === 0 || mmus.has(mmu));
+  });
 }
 
 export function sessionsWithEnd(timeline: TimelineRow[]): Set<string> {

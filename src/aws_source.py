@@ -360,6 +360,17 @@ def build_outputs(records: List[Dict[str, Any]], config: dict):
 
     prestart = explode_prestart(records, config)
     exceptions = quality.get_df()
+
+    # Drop junk rows with no MMU assigned — they're not trustworthy analytics
+    # (operator didn't fill the app properly). They remain captured in the
+    # exceptions table for data-quality follow-up.
+    def _has_mmu(df):
+        if df.empty or "mmu_id" not in df.columns:
+            return df
+        return df[df["mmu_id"].notna() & (df["mmu_id"].astype(str).str.strip() != "")].reset_index(drop=True)
+    timeline = _has_mmu(timeline)
+    prestart = _has_mmu(prestart)
+
     return timeline, prestart, exceptions
 
 
