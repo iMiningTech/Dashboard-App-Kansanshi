@@ -63,6 +63,7 @@ export default function Dashboard() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [touched, setTouched] = useState(false);  // false = "all" (default); true = explicit selection
+  const [preset, setPreset] = useState<number | "mtd" | "all" | "custom">(30);  // active date-range preset
   const [hideTest, setHideTest] = useState(true);  // exclude internal test operators from customer view
   const [lo, setLo] = useState("");
   const [hi, setHi] = useState("");
@@ -80,8 +81,17 @@ export default function Dashboard() {
       setRaw(d); setLive(m.items || []); setAssets(a.items || []);
       const dates = uniqueSorted((d.timeline || []).map((t) => (t.reporting_date || "").slice(0, 10)));
       const min = dates[0] || "", max = dates[dates.length - 1] || "";
-      setLoBound(min); setHiBound(max); setLo(min); setHi(max);
-      setSelected(new Set());            // empty = all
+      // Bounds span all available data; default the VIEW to the last 30 days.
+      let lo30 = min;
+      if (max) {
+        const d0 = new Date(max + "T00:00:00Z");
+        d0.setUTCDate(d0.getUTCDate() - 29);
+        const s = d0.toISOString().slice(0, 10);
+        lo30 = min && s < min ? min : s;
+      }
+      setLoBound(min); setHiBound(max); setLo(lo30); setHi(max);
+      setPreset(30);
+      setSelected(new Set()); setTouched(false);   // false + empty = "all" selected
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }
@@ -89,6 +99,7 @@ export default function Dashboard() {
 
   function applyPreset(days: number | "mtd" | "all") {
     if (!hiBound) return;
+    setPreset(days);
     if (days === "all") { setLo(loBound); setHi(hiBound); return; }
     if (days === "mtd") { setLo(hiBound.slice(0, 8) + "01"); setHi(hiBound); return; }
     const d0 = new Date(hiBound + "T00:00:00Z");
@@ -161,6 +172,8 @@ export default function Dashboard() {
   }
   function selectAll() { setSelected(new Set(allMmus)); setTouched(true); }
   function selectNone() { setSelected(new Set()); setTouched(true); }
+  const allActive = !touched || (allMmus.length > 0 && allMmus.every((m) => selected.has(m)));
+  const noneActive = touched && selected.size === 0;
 
   return (
     <div className="flex min-h-screen">
@@ -184,21 +197,21 @@ export default function Dashboard() {
           <div className="mb-2 flex flex-wrap gap-1">
             {([["7d", 7], ["30d", 30], ["90d", 90], ["MTD", "mtd"], ["All", "all"]] as const).map(([label, v]) => (
               <button key={label} onClick={() => applyPreset(v as number | "mtd" | "all")}
-                className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-xs hover:bg-white/15">{label}</button>
+                className={`rounded-lg border px-2 py-1 text-xs ${preset === v ? "border-accent bg-accent font-semibold text-white" : "border-white/15 bg-white/5 hover:bg-white/15"}`}>{label}</button>
             ))}
           </div>
           <div className="mb-4 flex flex-col gap-2">
-            <input type="date" value={lo} min={loBound} max={hiBound} onChange={(e) => setLo(e.target.value)}
+            <input type="date" value={lo} min={loBound} max={hiBound} onChange={(e) => { setLo(e.target.value); setPreset("custom"); }}
               className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sidebarfg" />
-            <input type="date" value={hi} min={loBound} max={hiBound} onChange={(e) => setHi(e.target.value)}
+            <input type="date" value={hi} min={loBound} max={hiBound} onChange={(e) => { setHi(e.target.value); setPreset("custom"); }}
               className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sidebarfg" />
           </div>
 
           <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-sidebarfg/60">
             <span>MMUs</span>
-            <span className="flex gap-2 normal-case">
-              <button onClick={selectAll} className="text-accent2 hover:underline">All</button>
-              <button onClick={selectNone} className="text-accent2 hover:underline">None</button>
+            <span className="flex gap-1 normal-case">
+              <button onClick={selectAll} className={`rounded px-2 py-0.5 ${allActive ? "bg-accent font-semibold text-white" : "text-accent2 hover:underline"}`}>All</button>
+              <button onClick={selectNone} className={`rounded px-2 py-0.5 ${noneActive ? "bg-accent font-semibold text-white" : "text-accent2 hover:underline"}`}>None</button>
             </span>
           </div>
           <div className="max-h-56 space-y-1 overflow-auto pr-1">
@@ -740,18 +753,6 @@ function PerfView({ d }: { d: D }) {
   const piv = pivot(bucketRows, (r) => r.mmu_id || "—", (r) => r.bucket, (r) => r.duration_hours);
   piv.data.forEach((row) => piv.series.forEach((s) => (row[s] = round1(Number(row[s]) || 0))));
 
-  // dead time: first activity per session vs shift_start
-  const firstBySession = new Map<string, number>();
-  for (const r of d.act) {
-    if (!r.session_id || !r.start_timestamp) continue;
-    const t = new Date(r.start_timestamp).getTime();
-    if (!firstBySession.has(r.session_id) || t < firstBySession.get(r.session_id)!) firstBySession.set(r.session_id, t);
-  }
-  const dead = d.sessions.filter((s) => s.shift_start && firstBySession.has(s.session_id)).map((s) => {
-    const gap = (firstBySession.get(s.session_id)! - new Date(s.shift_start!).getTime()) / 60000;
-    return { name: `${s.operator_name} (${s.reporting_date})`, value: Math.max(0, round1(gap)) };
-  }).sort((a, b) => a.value - b.value);
-
   // start summary table
   const byOp = new Map<string, number[]>();
   for (const s of d.sessions) if (s.operator_name && s.shift_start) {
@@ -766,14 +767,11 @@ function PerfView({ d }: { d: D }) {
 
   return (
     <div className="space-y-6">
-      <ChartCard title="Time breakdown by MMU" subtitle="Productive · Movement · Downtime · Maintenance · Safety/Admin">
-        <StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={BUCKET_COLOURS} />
+      <ChartCard title="Time distribution by MMU" subtitle="Productive · Movement · Downtime · Maintenance · Safety/Admin">
+        <StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={BUCKET_COLOURS} xLabel="MMU" yLabel="Hours" />
       </ChartCard>
       <ChartCard title="Shift start summary by operator">
         <DataTable columns={[{ key: "Operator", label: "Operator" }, { key: "Sessions", label: "Sessions" }, { key: "Earliest", label: "Earliest" }, { key: "Latest", label: "Latest" }, { key: "Avg Start", label: "Avg Start" }]} rows={summary} />
-      </ChartCard>
-      <ChartCard title="Dead time — shift start to first logged activity (min)">
-        <BarH data={dead} colorMap={paletteMap(dead.map((x) => x.name))} height={Math.max(300, dead.length * 26)} />
       </ChartCard>
     </div>
   );

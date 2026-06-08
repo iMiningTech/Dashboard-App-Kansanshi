@@ -80,18 +80,20 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels }
 }
 
 // Stacked/grouped vertical bar. rows: [{ x, [series]: number }]. series with colours.
-export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked = true }:
-  { rows: Record<string, unknown>[]; xKey: string; series: string[]; colorMap: Record<string, string>; height?: number; stacked?: boolean }) {
+export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked = true, xLabel, yLabel }:
+  { rows: Record<string, unknown>[]; xKey: string; series: string[]; colorMap: Record<string, string>; height?: number; stacked?: boolean; xLabel?: string; yLabel?: string }) {
   if (!rows.length) return <Empty />;
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
-        <BarChart data={rows} margin={{ left: 8, right: 8 }}>
+        <BarChart data={rows} margin={{ left: yLabel ? 16 : 8, right: 8, bottom: xLabel ? 44 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-          <XAxis dataKey={xKey} tick={AXIS} />
-          <YAxis tick={AXIS} />
+          <XAxis dataKey={xKey} tick={AXIS}
+                 label={xLabel ? { value: xLabel, position: "insideBottom", offset: -2, ...AXIS } : undefined} />
+          <YAxis tick={AXIS}
+                 label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
           {series.map((s, i) => (
             <Bar key={s} dataKey={s} stackId={stacked ? "a" : undefined}
                  fill={colorMap[s] || MASTER_PALETTE[i % MASTER_PALETTE.length]} radius={stacked ? 0 : [4, 4, 0, 0]} />
