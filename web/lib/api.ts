@@ -29,7 +29,34 @@ export type MmuStatus = {
   last_activity?: string;
   last_seen?: string;
   since?: string;
+  ended_at?: string;
+  last_prestart_at?: string;
   plant?: string;
+};
+
+export type ShiftEvent = {
+  submission_id?: string;
+  time?: string;
+  received_at?: string;
+  activity?: string | null;
+  shift_event?: string | null;
+  fault_flag?: boolean;
+  operator?: string | null;
+  form_id?: string;
+};
+
+export type LiveShift = {
+  mmu: string;
+  found: boolean;
+  shift: {
+    operator?: string | null;
+    status?: string | null;
+    since?: string | null;
+    ended_at?: string | null;
+    last_activity?: string | null;
+    last_prestart_at?: string | null;
+  } | null;
+  events: ShiftEvent[];
 };
 
 export type TimelineRow = {
@@ -75,5 +102,6 @@ export const api = {
   assets: () => get<{ count: number; items: Asset[] }>("/assets"),
   liveMmu: () => get<{ count: number; items: MmuStatus[] }>("/live/mmu"),
   liveSessions: () => get<{ count: number; items: Record<string, unknown>[] }>("/live/sessions"),
+  liveShift: (mmu: string) => get<LiveShift>(`/live/shift?mmu=${encodeURIComponent(mmu)}`),
   dashboard: (window = "30d") => get<DashboardData>(`/dashboard?window=${window}`),
 };

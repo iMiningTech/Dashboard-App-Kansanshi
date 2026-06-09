@@ -6,7 +6,7 @@ import {
   LayoutDashboard, AlertCircle, AlertTriangle, BarChart3, ClipboardCheck, Timer, CalendarRange,
   User, Activity, RefreshCw, Truck,
 } from "lucide-react";
-import { api, type DashboardData, type MmuStatus, type PrestartRow, type Asset } from "@/lib/api";
+import { api, type DashboardData, type MmuStatus, type Asset, type LiveShift } from "@/lib/api";
 import { Card, CardBody, Stat, Badge } from "@/components/ui";
 import { ChartCard, BarH, BarV, StackedBar, Donut, AreaTrend, DataTable } from "@/components/charts";
 import {
@@ -246,12 +246,12 @@ export default function Dashboard() {
           {error && <Card><CardBody><div className="flex items-center gap-2 text-danger"><AlertCircle size={18} /> {error}</div></CardBody></Card>}
           {loading ? <div className="text-sm text-muted">Loading…</div> : (
             <div className="space-y-6">
-              {view === "overview" && <OverviewView d={d} live={live} assets={assets} prestart={raw?.prestart || []} />}
+              {view === "overview" && <OverviewView d={d} live={live} assets={assets} />}
               {view === "logouts" && <OperatorMetricsView d={d} />}
               {view === "util" && <UtilView d={d} fleet={effMmus.size || allMmus.length} selectedDays={rangeDays(lo, hi)} />}
               {view === "prestart" && <PrestartView d={d} />}
               {view === "perf" && <PerfView d={d} />}
-              {view === "timeline" && <TimelineView d={d} selected={effMmus} />}
+              {view === "timeline" && <TimelineView selected={effMmus} />}
             </div>
           )}
         </main>
@@ -261,8 +261,7 @@ export default function Dashboard() {
 }
 
 /* ── Site status: one fixed tile per active billed asset, merged with live state ── */
-function SiteStatus({ assets, live, prestart }: { assets: Asset[]; live: MmuStatus[]; prestart: PrestartRow[] }) {
-  const prestartKeys = new Set(prestart.map((p) => `${p.mmu_id}|${(p.reporting_date || "").slice(0, 10)}`));
+function SiteStatus({ assets, live }: { assets: Asset[]; live: MmuStatus[] }) {
   const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
   // Base list is the active billed fleet; fall back to live list if the assets
   // registry isn't deployed yet.
@@ -278,8 +277,15 @@ function SiteStatus({ assets, live, prestart }: { assets: Asset[]; live: MmuStat
           {base.map((asset) => {
             const m = liveByFleet.get(asset.fleet_no);
             const onShift = (m?.status || "").toUpperCase() === "ON_SHIFT";
-            const day = (m?.last_seen || "").slice(0, 10);
-            const noPrestart = !!m && !!day && !prestartKeys.has(`${asset.fleet_no}|${day}`);
+            // Live pre-start check: warn if this shift has no pre-start logged
+            // (counts a pre-start up to 3h before shift start). Real-time, off
+            // current_mmu.last_prestart_at — never the lagged precompute.
+            const psMs = m?.last_prestart_at ? Date.parse(m.last_prestart_at) : NaN;
+            const sinceMs = m?.since ? Date.parse(m.since) : NaN;
+            const noPrestart = !m ? false
+              : isNaN(sinceMs) ? isNaN(psMs)
+              : isNaN(psMs) ? true
+              : psMs < sinceMs - 3 * 3600 * 1000;
             return (
               <Card key={asset.fleet_no}>
                 <CardBody>
@@ -317,8 +323,8 @@ type D = {
 };
 
 /* ── Overview: site tiles + KPIs + live status pie + activity mix ── */
-function OverviewView({ d, live, assets, prestart }:
-  { d: D; live: MmuStatus[]; assets: Asset[]; prestart: PrestartRow[] }) {
+function OverviewView({ d, live, assets }:
+  { d: D; live: MmuStatus[]; assets: Asset[] }) {
   // Current fleet status — what each active unit is doing RIGHT NOW (live snapshot).
   const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
   const fleet: { fleet_no: string }[] = assets.length ? assets : live.map((m) => ({ fleet_no: m.fleet_no }));
@@ -338,7 +344,7 @@ function OverviewView({ d, live, assets, prestart }:
 
   return (
     <div className="space-y-6">
-      <SiteStatus assets={assets} live={live} prestart={prestart} />
+      <SiteStatus assets={assets} live={live} />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Shift sessions" value={d.k.totalSessions} />
         <Stat label="Active MMUs" value={d.k.activeMmus} />
@@ -777,16 +783,108 @@ function PerfView({ d }: { d: D }) {
   );
 }
 
-/* ── Shift timeline (single MMU) — day breakdown table; visual gantt next pass ── */
-function TimelineView({ d, selected }: { d: D; selected: Set<string> }) {
-  if (selected.size !== 1) {
-    return <Card><CardBody><div className="text-sm text-muted">Select a single MMU in the left panel to view its shift timeline.</div></CardBody></Card>;
-  }
-  const breakdown = groupSum(d.act, (r) => r.activity_type || "Other", (r) => Number(r.duration_minutes) || 0)
-    .map((x) => ({ Activity: x.name, Minutes: Math.round(x.value) })).sort((a, b) => b.Minutes - a.Minutes);
+/* ── Shift timeline (single MMU) — LIVE off /live/shift (no precompute). ── */
+function TimelineView({ selected }: { selected: Set<string> }) {
+  const mmu = selected.size === 1 ? [...selected][0] : null;
+  const [data, setData] = useState<LiveShift | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!mmu) { setData(null); return; }
+    let alive = true;
+    setLoading(true); setErr(null);
+    api.liveShift(mmu)
+      .then((r) => { if (alive) setData(r); })
+      .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : String(e)); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [mmu]);
+
+  if (!mmu) return <Card><CardBody><div className="text-sm text-muted">Select a single MMU in the left panel to view its shift timeline.</div></CardBody></Card>;
+  if (loading && !data) return <Card><CardBody><div className="text-sm text-muted">Loading live shift for {mmu}…</div></CardBody></Card>;
+  if (err) return <Card><CardBody><div className="text-sm text-danger">Couldn’t load live shift: {err}</div></CardBody></Card>;
+  if (!data || !data.found || !data.shift) return <Card><CardBody><div className="text-sm text-muted">No current or recent shift found for {mmu}.</div></CardBody></Card>;
+
+  const shift = data.shift;
+  const events = data.events || [];
+  const hh = (iso?: string | null) => (iso || "").slice(11, 16) || "—";
+
+  const startEvt = events.find((e) => e.shift_event === "START");
+  const endEvt = events.find((e) => e.shift_event === "END");
+  const startTime = startEvt?.time || shift.since || events[0]?.time || null;
+  const endTime = endEvt?.time || shift.ended_at || null;
+  const acts = events.filter((e) => !e.shift_event);
+
+  const startMs = startTime ? Date.parse(startTime) : Date.now();
+  const endMs = endTime ? Date.parse(endTime) : null;
+  const inProgress = endMs == null;
+  const actMs = acts.map((a) => Date.parse(a.time || "")).filter((n) => !isNaN(n));
+  const lastActMs = actMs.length ? Math.max(...actMs) : startMs;
+  // Shift open → activities fill 0→50%; once shift-end is logged everything
+  // rescales across the full 0→100% line.
+  const spanEnd = endMs ?? (lastActMs > startMs ? lastActMs : startMs + 1);
+  const maxPct = endMs != null ? 100 : (acts.length ? 50 : 0);
+  const pct = (ms: number) => (spanEnd <= startMs ? 0 : Math.max(0, Math.min(maxPct, ((ms - startMs) / (spanEnd - startMs)) * maxPct)));
+  const truckPct = endMs != null ? 100 : (acts.length ? 50 : 0);
+
+  type Evt = { iso: string; name: string; pct: number; color: string };
+  const markers: Evt[] = [];
+  if (startTime) markers.push({ iso: startTime, name: "Shift Start", pct: 0, color: "#86BCB6" });
+  acts.forEach((a, i) => markers.push({ iso: a.time || "", name: a.activity || "Activity", pct: pct(Date.parse(a.time || "")), color: activityColour(a.activity || "", i) }));
+  if (endTime) markers.push({ iso: endTime, name: "Shift End", pct: 100, color: "#FABFD2" });
+
+  const faultEvents = events.filter((e) => e.fault_flag);
+  const log = acts.map((a) => ({ Time: hh(a.time), Activity: a.activity || "—", Operator: a.operator || "—", Flag: a.fault_flag ? "⚠ fault" : "" }));
+  const dayLabel = (startTime || "").slice(0, 10) || "—";
+
   return (
-    <ChartCard title="Activity breakdown" subtitle="Visual Gantt timeline lands in the next pass">
-      <DataTable columns={[{ key: "Activity", label: "Activity" }, { key: "Minutes", label: "Minutes" }]} rows={breakdown} />
-    </ChartCard>
+    <div className="space-y-6">
+      <ChartCard
+        title={`Shift timeline — ${mmu}`}
+        subtitle={`${dayLabel} · ${shift.operator || "—"} · ${hh(startTime)} → ${inProgress ? "in progress" : hh(endTime)} · live`}>
+        <div className="relative h-64">
+          <div className="absolute inset-x-12 top-0 bottom-0">
+            <div className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 rounded bg-border" />
+            <div className="absolute left-0 top-1/2 h-0.5 -translate-y-1/2 rounded bg-accent/60" style={{ width: `${truckPct}%` }} />
+            {inProgress && (
+              <div className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-xs italic text-muted" style={{ left: `calc(${truckPct}% + 16px)` }}>
+                shift in progress…
+              </div>
+            )}
+            {markers.map((e, i) => {
+              const above = i % 2 === 0;
+              return (
+                <div key={i} className="absolute top-0 bottom-0" style={{ left: `${e.pct}%` }}>
+                  <div className={`absolute left-1/2 w-24 -translate-x-1/2 text-center ${above ? "bottom-[53%]" : "top-[53%]"}`}>
+                    <div className="text-[11px] font-semibold text-fg">{hh(e.iso)}</div>
+                    <div className="text-[10px] leading-tight text-muted">{e.name}</div>
+                  </div>
+                  <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface" style={{ background: e.color }} />
+                </div>
+              );
+            })}
+            {/* current-position marker — replace <Truck/> with <img src="/truck.png" width={30} /> to use a custom icon */}
+            <div className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-[210%]" style={{ left: `${truckPct}%` }}>
+              <Truck size={30} className="text-brand" />
+            </div>
+          </div>
+        </div>
+      </ChartCard>
+
+      {faultEvents.length > 0 && (
+        <ChartCard title="Flags this shift" subtitle="Submissions logged with a fault during this shift">
+          <div className="flex flex-wrap gap-2">
+            {faultEvents.map((f, i) => <Badge key={i} tone="danger">{(f.activity || "Fault")} · {hh(f.time)}</Badge>)}
+          </div>
+        </ChartCard>
+      )}
+
+      <ChartCard title="Shift activity log" subtitle="Everything logged during this shift, in order (live)">
+        <DataTable
+          columns={[{ key: "Time", label: "Time" }, { key: "Activity", label: "Activity" }, { key: "Operator", label: "Operator" }, { key: "Flag", label: "Flag" }]}
+          rows={log} csvName={`shift_${mmu}_${dayLabel}.csv`} />
+      </ChartCard>
+    </div>
   );
 }
