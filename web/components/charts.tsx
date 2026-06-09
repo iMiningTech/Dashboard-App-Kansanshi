@@ -197,28 +197,35 @@ function donutLabel(p: {
   );
 }
 
+// In print, draw the % INSIDE each slice (centroid) — clip-safe, so the pie gets
+// real labels on the page. Slices under 5% stay clean (read via the legend).
+function donutInsideLabel(p: { cx?: number; cy?: number; midAngle?: number; innerRadius?: number; outerRadius?: number; percent?: number }) {
+  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0 } = p;
+  if (percent < 0.05) return null;
+  const r = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + r * Math.cos(-midAngle * RAD), y = cy + r * Math.sin(-midAngle * RAD);
+  return (
+    <text x={x} y={y} fill="#fff" fontSize={10} fontWeight={700} textAnchor="middle" dominantBaseline="central">
+      {Math.round(percent * 100)}%
+    </text>
+  );
+}
+
 export function Donut({ data, colorMap, height = 380 }:
   { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number }) {
   const print = useContext(PrintContext);
   if (!data.length) return <Empty />;
   const colorOf = (name: string, i: number) => colorMap?.[name] || MASTER_PALETTE[i % MASTER_PALETTE.length];
-  const total = data.reduce((s, d) => s + d.value, 0) || 1;
-  // On screen: leader-line labels. In print (narrow column, labels clip): drop
-  // the leader labels and put the % in the legend instead.
-  const legendFmt = (value: unknown, entry: unknown) => {
-    const v = (entry as { payload?: { value?: number } })?.payload?.value || 0;
-    return `${value} · ${Math.round((v / total) * 100)}%`;
-  };
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
         <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius="60%"
-               paddingAngle={1} labelLine={false} label={print ? false : donutLabel} isAnimationActive={!print}>
+               paddingAngle={1} labelLine={false} label={print ? donutInsideLabel : donutLabel} isAnimationActive={!print}>
             {data.map((d, i) => <Cell key={i} fill={colorOf(d.name, i)} />)}
           </Pie>
           <Tooltip formatter={(v, n) => [v as number, n as string]} />
-          <Legend wrapperStyle={{ fontSize: 11 }} formatter={print ? (legendFmt as never) : undefined} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
         </PieChart>
       </ResponsiveContainer>
     </div>

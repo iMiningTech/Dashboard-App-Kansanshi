@@ -61,14 +61,15 @@ html, body {
 .report-meta { text-align: center; flex: 1; }
 .report-title { font-size: 17px; font-weight: 700; color: rgb(var(--brand)); }
 .report-sub { font-size: 11px; color: rgb(var(--muted)); margin-top: 2px; }
+.report-by { font-size: 9px; color: rgb(var(--muted)); margin-top: 3px; }
 .report-body { flex: 1; }
-.report-foot { margin-top: 14px; padding-top: 8px; border-top: 1px solid rgb(var(--border));
-  font-size: 10px; color: rgb(var(--muted)); text-align: right; }
 /* keep cards from splitting awkwardly across a page break */
 .report-body .rounded-2xl { break-inside: avoid; }
 
 @media print {
-  body { background: #fff; }
+  html, body { background: #fff !important; }
   .report-page { box-shadow: none; margin: 0; width: auto; min-height: auto; padding: 0; }
   @page { size: A4; margin: 14mm; }
 }
+/* also force white when the report renders (covers the headless print emulation) */
+.report-root { background: #fff; min-height: 100vh; }

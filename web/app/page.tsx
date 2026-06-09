@@ -88,7 +88,8 @@ function PrintReport({ tabs, d, live, assets, lo, hi, fleet, selectedDays, effMm
               <img src="/orica_logo.png" alt="Orica" className="report-logo" />
               <div className="report-meta">
                 <div className="report-title">{PRINT_TITLES[t] || t}</div>
-                <div className="report-sub">MMU Operations — Kansanshi · {lo} → {hi} · {mmuLabel}</div>
+                <div className="report-sub">MMU Operations — Kansanshi · {lo} to {hi} · {mmuLabel}</div>
+                <div className="report-by">Generated {generated} (UTC) · Powered by iMining</div>
               </div>
             </header>
             <div className="report-body">
@@ -99,7 +100,6 @@ function PrintReport({ tabs, d, live, assets, lo, hi, fleet, selectedDays, effMm
               {t === "perf" && <PerfView d={d} onPickMmu={noop} />}
               {t === "timeline" && <TimelineView selected={effMmus} />}
             </div>
-            <footer className="report-foot">Generated {generated} (UTC) · Powered By iMining</footer>
           </section>
         ))}
       </div>
