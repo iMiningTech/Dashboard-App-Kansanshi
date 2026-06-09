@@ -174,6 +174,8 @@ export default function Dashboard() {
   function selectNone() { setSelected(new Set()); setTouched(true); }
   const allActive = !touched || (allMmus.length > 0 && allMmus.every((m) => selected.has(m)));
   const noneActive = touched && selected.size === 0;
+  // Click an MMU tile → filter to just that unit and jump to its Shift Timeline.
+  function openTimeline(fleet: string) { setSelected(new Set([fleet])); setTouched(true); setView("timeline"); }
 
   return (
     <div className="flex min-h-screen">
@@ -246,7 +248,7 @@ export default function Dashboard() {
           {error && <Card><CardBody><div className="flex items-center gap-2 text-danger"><AlertCircle size={18} /> {error}</div></CardBody></Card>}
           {loading ? <div className="text-sm text-muted">Loading…</div> : (
             <div className="space-y-6">
-              {view === "overview" && <OverviewView d={d} live={live} assets={assets} />}
+              {view === "overview" && <OverviewView d={d} live={live} assets={assets} onOpenTimeline={openTimeline} />}
               {view === "logouts" && <OperatorMetricsView d={d} />}
               {view === "util" && <UtilView d={d} fleet={effMmus.size || allMmus.length} selectedDays={rangeDays(lo, hi)} />}
               {view === "prestart" && <PrestartView d={d} />}
@@ -261,17 +263,22 @@ export default function Dashboard() {
 }
 
 /* ── Site status: one fixed tile per active billed asset, merged with live state ── */
-function SiteStatus({ assets, live }: { assets: Asset[]; live: MmuStatus[] }) {
+function SiteStatus({ assets, live, onOpenTimeline }: { assets: Asset[]; live: MmuStatus[]; onOpenTimeline: (fleet: string) => void }) {
   const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
   // Base list is the active billed fleet; fall back to live list if the assets
   // registry isn't deployed yet.
   const base: Asset[] = assets.length
     ? [...assets].sort((a, b) => Number(a.sort_order ?? 999) - Number(b.sort_order ?? 999))
     : live.map((m) => ({ fleet_no: m.fleet_no, display_name: m.fleet_no }));
+  // Forgotten logout: on shift but no activity logged for 12h+ (uses last_seen,
+  // a UTC timestamp, vs now — so it's timezone-safe and won't false-flag normal
+  // overnight shifts that are still logging).
+  const STALE_MS = 12 * 3600 * 1000;
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg"><Truck size={16} /> Site Status — current snapshot</div>
+      <div className="flex items-center gap-2 text-sm font-semibold text-fg"><Truck size={16} /> Site Status — live snapshot</div>
+      <div className="mb-3 mt-0.5 text-xs text-muted">Real-time, ignores the date/MMU filters. Click any unit to open its Shift Timeline.</div>
       {base.length === 0 ? <div className="text-sm text-muted">No assets configured.</div> : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {base.map((asset) => {
@@ -286,14 +293,25 @@ function SiteStatus({ assets, live }: { assets: Asset[]; live: MmuStatus[] }) {
               : isNaN(sinceMs) ? isNaN(psMs)
               : isNaN(psMs) ? true
               : psMs < sinceMs - 3 * 3600 * 1000;
+            const lastSeenMs = m?.last_seen ? Date.parse(m.last_seen) : NaN;
+            const missedEnd = onShift && !isNaN(lastSeenMs) && (Date.now() - lastSeenMs) > STALE_MS;
             return (
-              <Card key={asset.fleet_no}>
+              <Card key={asset.fleet_no}
+                className="cursor-pointer transition hover:border-accent hover:shadow-md"
+                onClick={() => onOpenTimeline(asset.fleet_no)}>
                 <CardBody>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between">
                     <span className="font-semibold text-fg">{asset.display_name || asset.fleet_no}</span>
-                    <Badge tone={!m ? "muted" : onShift ? "ok" : "muted"}>
-                      {!m ? "No data" : onShift ? "On shift" : "Off shift"}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge tone={!m ? "muted" : onShift ? "ok" : "muted"}>
+                        {!m ? "No data" : onShift ? "On shift" : "Off shift"}
+                      </Badge>
+                      {missedEnd && (
+                        <span className="flex items-center gap-1 text-xs font-medium text-danger" title="On shift with no activity for 12h+ — likely a missed shift-end">
+                          <AlertTriangle size={12} /> Missed shift-end?
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-sm text-muted"><User size={14} /> {m?.operator || m?.operator_last || "—"}</div>
                   <div className="mt-1 flex items-center gap-2 text-sm text-fg"><Activity size={14} className="text-accent" /> {m?.last_activity || "—"}</div>
@@ -323,8 +341,8 @@ type D = {
 };
 
 /* ── Overview: site tiles + KPIs + live status pie + activity mix ── */
-function OverviewView({ d, live, assets }:
-  { d: D; live: MmuStatus[]; assets: Asset[] }) {
+function OverviewView({ d, live, assets, onOpenTimeline }:
+  { d: D; live: MmuStatus[]; assets: Asset[]; onOpenTimeline: (fleet: string) => void }) {
   // Current fleet status — what each active unit is doing RIGHT NOW (live snapshot).
   const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
   const fleet: { fleet_no: string }[] = assets.length ? assets : live.map((m) => ({ fleet_no: m.fleet_no }));
@@ -344,7 +362,12 @@ function OverviewView({ d, live, assets }:
 
   return (
     <div className="space-y-6">
-      <SiteStatus assets={assets} live={live} />
+      <SiteStatus assets={assets} live={live} onOpenTimeline={onOpenTimeline} />
+      <div className="flex items-center gap-3 pt-2">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs font-medium uppercase tracking-wide text-muted">For the selected date range &amp; MMUs</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Shift sessions" value={d.k.totalSessions} />
         <Stat label="Active MMUs" value={d.k.activeMmus} />
@@ -838,38 +861,68 @@ function TimelineView({ selected }: { selected: Set<string> }) {
   const log = acts.map((a) => ({ Time: hh(a.time), Activity: a.activity || "—", Operator: a.operator || "—", Flag: a.fault_flag ? "⚠ fault" : "" }));
   const dayLabel = (startTime || "").slice(0, 10) || "—";
 
+  // De-cluster: a run of events that are close together folds into ONE dot with
+  // its members stacked as angled lines — so neighbouring labels never overlap.
+  // Chain-merge (gap to previous < MERGE) but cap the cluster's total span so a
+  // long even drip can't merge into one giant stack.
+  const MERGE = 5, SPANCAP = 9;
+  const trunc = (s: string, n = 20) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+  type Cl = Evt & { members: { iso: string; name: string }[] };
+  const clustered: Cl[] = [];
+  let lastPct = -999;
+  for (const m of markers) {
+    const last = clustered[clustered.length - 1];
+    if (last && (m.pct - lastPct) < MERGE && (m.pct - last.pct) < SPANCAP) {
+      last.members.push({ iso: m.iso, name: m.name });
+    } else {
+      clustered.push({ ...m, members: [{ iso: m.iso, name: m.name }] });
+    }
+    lastPct = m.pct;
+  }
+  // SVG geometry (viewBox 0 0 1000 230). Labels angled above the line so they
+  // never collide; the MMU icon sits in its own lane below the line.
+  const LX = 60, RX = 940, LY = 150;
+  const xOf = (p: number) => LX + (p / 100) * (RX - LX);
+
   return (
     <div className="space-y-6">
       <ChartCard
         title={`Shift timeline — ${mmu}`}
         subtitle={`${dayLabel} · ${shift.operator || "—"} · ${hh(startTime)} → ${inProgress ? "in progress" : hh(endTime)} · live`}>
-        <div className="relative h-64">
-          <div className="absolute inset-x-12 top-0 bottom-0">
-            <div className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 rounded bg-border" />
-            <div className="absolute left-0 top-1/2 h-0.5 -translate-y-1/2 rounded bg-accent/60" style={{ width: `${truckPct}%` }} />
-            {inProgress && (
-              <div className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-xs italic text-muted" style={{ left: `calc(${truckPct}% + 16px)` }}>
-                shift in progress…
-              </div>
-            )}
-            {markers.map((e, i) => {
-              const above = i % 2 === 0;
-              return (
-                <div key={i} className="absolute top-0 bottom-0" style={{ left: `${e.pct}%` }}>
-                  <div className={`absolute left-1/2 w-24 -translate-x-1/2 text-center ${above ? "bottom-[53%]" : "top-[53%]"}`}>
-                    <div className="text-[11px] font-semibold text-fg">{hh(e.iso)}</div>
-                    <div className="text-[10px] leading-tight text-muted">{e.name}</div>
-                  </div>
-                  <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface" style={{ background: e.color }} />
-                </div>
-              );
-            })}
-            {/* current-position marker — replace <Truck/> with <img src="/truck.png" width={30} /> to use a custom icon */}
-            <div className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-[210%]" style={{ left: `${truckPct}%` }}>
-              <Truck size={30} className="text-brand" />
-            </div>
-          </div>
-        </div>
+        <svg viewBox="0 0 1000 230" width="100%" role="img" aria-label={`Shift timeline for ${mmu}`}>
+          <line x1={LX} y1={LY} x2={RX} y2={LY} stroke="#e5eaef" strokeWidth={2} strokeLinecap="round" />
+          <line x1={LX} y1={LY} x2={xOf(truckPct)} y2={LY} stroke="#f5911e" strokeOpacity={0.6} strokeWidth={2} strokeLinecap="round" />
+          {clustered.map((e, i) => {
+            const x = xOf(e.pct);
+            const right = e.pct > 78;   // flip anchor near the right edge so labels stay in view
+            return (
+              <g key={i}>
+                <line x1={x} y1={LY} x2={x} y2={LY - 12} stroke="#cbd5e1" strokeWidth={1} />
+                <circle cx={x} cy={LY} r={4.5} fill={e.color} stroke="#fff" strokeWidth={2} />
+                <text x={x} y={LY - 14} transform={`rotate(-38 ${x} ${LY - 14})`}
+                      textAnchor={right ? "end" : "start"} fontSize={10} fill="#64748b">
+                  {e.members.map((m, j) => (
+                    <tspan key={j} x={x} dy={j === 0 ? 0 : 12}>
+                      <tspan fontWeight={600} fill="#1f2937">{hh(m.iso)} </tspan>{trunc(m.name)}
+                    </tspan>
+                  ))}
+                </text>
+              </g>
+            );
+          })}
+          {/* live pulse at the MMU's current position */}
+          {inProgress && (
+            <circle cx={xOf(truckPct)} cy={LY} r={6} fill="#f5911e">
+              <animate attributeName="r" values="6;15;6" dur="1.8s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.55;0;0.55" dur="1.8s" repeatCount="indefinite" />
+            </circle>
+          )}
+          <circle cx={xOf(truckPct)} cy={LY} r={4.5} fill="#f5911e" stroke="#fff" strokeWidth={2} />
+          <image href="/mmu.svg" x={xOf(truckPct) - 18} y={LY + 12} width={36} height={20} />
+          {inProgress && (
+            <text x={xOf(truckPct) + 24} y={LY + 27} fontSize={10} fontStyle="italic" fill="#94a3b8">shift in progress…</text>
+          )}
+        </svg>
       </ChartCard>
 
       {faultEvents.length > 0 && (

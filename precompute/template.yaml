@@ -27,8 +27,8 @@ Globals:
   Function:
     Runtime: python3.11
     Architectures: [x86_64]
-    Timeout: 300
-    MemorySize: 1024
+    Timeout: 900          # max — the all-windows run (incl. 90d) reads many S3 objects serially
+    MemorySize: 1536
 
 Resources:
   PrecomputeDLQ:
@@ -41,7 +41,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub "${Customer}-precompute-${Environment}"   # fixed name → webhook references it without a cross-stack import
-      VisibilityTimeout: 1860            # > 6x function timeout
+      VisibilityTimeout: 5460            # ≥ 6x function timeout (900s)
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt PrecomputeDLQ.Arn
         maxReceiveCount: 3
