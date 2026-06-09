@@ -15,12 +15,16 @@ export function CardBody({ className, children }: { className?: string; children
   return <div className={cn("p-4", className)}>{children}</div>;
 }
 
-export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
+export function Stat({ label, value, sub, status, onClick }: { label: string; value: ReactNode; sub?: string; status?: "ok" | "warn" | "bad"; onClick?: () => void }) {
+  const accent = status === "bad" ? "border-t-4 border-t-danger"
+    : status === "warn" ? "border-t-4 border-t-warn"
+    : status === "ok" ? "border-t-4 border-t-ok" : "";
+  const valueColor = status === "bad" ? "text-danger" : status === "warn" ? "text-warn" : "";
   return (
-    <Card>
+    <Card className={cn(accent, onClick && "cursor-pointer transition hover:border-accent hover:shadow-md")} onClick={onClick}>
       <CardBody className="text-center">
         <div className="text-sm text-muted">{label}</div>
-        <div className="mt-1 text-3xl font-semibold tracking-tight">{value}</div>
+        <div className={cn("mt-1 text-3xl font-semibold tracking-tight", valueColor)}>{value}</div>
         {sub && <div className="mt-1 text-xs text-muted">{sub}</div>}
       </CardBody>
     </Card>

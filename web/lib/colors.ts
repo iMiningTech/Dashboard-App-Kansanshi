@@ -58,6 +58,42 @@ export const ACTIVITY_BUCKET: Record<string, string> = {
   "Safety Violation": "Safety/Admin",
 };
 
+// Brand + semantic colours. Use ONE brand colour on categorical bars and spend
+// the accent only on the thing to act on; reserve red for genuine exceptions.
+export const BRAND_NAVY = "#002841";
+export const BRAND_ORANGE = "#f5911e";
+export const STATUS = { ok: "#59A14F", warn: "#f5911e", bad: "#E15759" };
+
+// Responsibility lens — every logged hour bucketed by WHO OWNS the time, so
+// "Waiting on mine" can be defended separately from "Idle/Standby".
+export const RESPONSIBILITY_BUCKET: Record<string, string> = {
+  "Loading Explosives": "Productive",
+  "FQMO - Dipping & Priming": "Productive",
+  "Reload": "Productive",
+  "Travel": "Movement",
+  "Toolbox Talk": "Safety/Admin",
+  "Tool Box Meeting": "Safety/Admin",
+  "Unsafe Condition": "Safety/Admin",
+  "Safety Violation": "Safety/Admin",
+  "Waiting For Explosives": "Waiting on mine",
+  "Waiting For Personnel": "Waiting on mine",
+  "Standby": "Idle/Standby",
+  "Lunch": "Idle/Standby",
+  "Breakdown": "Breakdown",
+  "Refueling": "Breakdown",
+};
+// Left→right order for the stacked responsibility bar.
+export const RESPONSIBILITY_ORDER = ["Productive", "Movement", "Safety/Admin", "Waiting on mine", "Idle/Standby", "Breakdown"];
+export const RESPONSIBILITY_COLOURS: Record<string, string> = {
+  Productive: "#59A14F",       // green
+  Movement: "#4E79A7",         // steel blue
+  "Safety/Admin": "#B07AA1",   // muted purple
+  "Waiting on mine": "#f5911e",// brand amber — the exhibit
+  "Idle/Standby": "#BAB0AC",   // grey (idle is neutral, not an alarm)
+  Breakdown: "#E15759",        // red — a genuine exception
+};
+export const responsibilityOf = (activity: string) => RESPONSIBILITY_BUCKET[activity] || "Idle/Standby";
+
 // Stable distinct colour per category (mirrors palette_map).
 export function paletteMap(categories: string[]): Record<string, string> {
   const out: Record<string, string> = {};

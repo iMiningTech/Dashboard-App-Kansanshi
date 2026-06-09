@@ -8,12 +8,13 @@ import {
 } from "lucide-react";
 import { api, type DashboardData, type MmuStatus, type Asset, type LiveShift } from "@/lib/api";
 import { Card, CardBody, Stat, Badge } from "@/components/ui";
-import { ChartCard, BarH, BarV, StackedBar, Donut, AreaTrend, DataTable } from "@/components/charts";
+import { ChartCard, BarH, BarV, StackedBar, Donut, AreaTrend, DataTable, ResponsibilityBar, HourHeatmap } from "@/components/charts";
 import {
   filterTimeline, filterPrestart, sessionSummary, sessionsWithEnd, activityTimeline,
   kpis, uniqueSorted, groupSum, groupCount,
 } from "@/lib/data";
-import { ACTIVITY_COLOURS, CATEGORY_COLOURS, BUCKET_COLOURS, ACTIVITY_BUCKET, MASTER_PALETTE, paletteMap, activityColour } from "@/lib/colors";
+import { ACTIVITY_COLOURS, CATEGORY_COLOURS, MASTER_PALETTE, activityColour,
+  responsibilityOf, RESPONSIBILITY_ORDER, RESPONSIBILITY_COLOURS } from "@/lib/colors";
 import { fmtTime } from "@/lib/utils";
 
 const VIEWS = [
@@ -40,6 +41,14 @@ function pivot<T>(rows: T[], xKey: (r: T) => string, sKey: (r: T) => string, val
   return { data: xs.map((x) => m.get(x)!), series: Array.from(ss) };
 }
 const round1 = (n: number) => Math.round(n * 10) / 10;
+// Bucket logged hours by responsibility (who owns the time) for the hero bar.
+function responsibilitySegments(act: { activity_type?: string; duration_hours: number }[]) {
+  const m = new Map<string, number>();
+  for (const r of act) m.set(responsibilityOf(r.activity_type || ""), (m.get(responsibilityOf(r.activity_type || "")) || 0) + (r.duration_hours || 0));
+  const total = [...m.values()].reduce((a, b) => a + b, 0) || 1;
+  return RESPONSIBILITY_ORDER.filter((b) => (m.get(b) || 0) > 0)
+    .map((b) => ({ name: b, hours: m.get(b) || 0, pct: Math.round(((m.get(b) || 0) / total) * 100) }));
+}
 // Inclusive day count between two YYYY-MM-DD strings (e.g. 1 May–30 May = 30).
 const rangeDays = (lo: string, hi: string) =>
   lo && hi ? Math.round((Date.parse(hi + "T00:00:00Z") - Date.parse(lo + "T00:00:00Z")) / 86400000) + 1 : 0;
@@ -176,6 +185,10 @@ export default function Dashboard() {
   const noneActive = touched && selected.size === 0;
   // Click an MMU tile → filter to just that unit and jump to its Shift Timeline.
   function openTimeline(fleet: string) { setSelected(new Set([fleet])); setTouched(true); setView("timeline"); }
+  // Click a date bar → narrow the date filter to that single day.
+  function pickDate(day: string) { setLo(day); setHi(day); setPreset("custom"); }
+  // Click an MMU bar → filter to just that unit (stay on the current page).
+  function pickMmu(fleet: string) { setSelected(new Set([fleet])); setTouched(true); }
 
   return (
     <div className="flex min-h-screen">
@@ -248,11 +261,11 @@ export default function Dashboard() {
           {error && <Card><CardBody><div className="flex items-center gap-2 text-danger"><AlertCircle size={18} /> {error}</div></CardBody></Card>}
           {loading ? <div className="text-sm text-muted">Loading…</div> : (
             <div className="space-y-6">
-              {view === "overview" && <OverviewView d={d} live={live} assets={assets} onOpenTimeline={openTimeline} />}
-              {view === "logouts" && <OperatorMetricsView d={d} />}
-              {view === "util" && <UtilView d={d} fleet={effMmus.size || allMmus.length} selectedDays={rangeDays(lo, hi)} />}
-              {view === "prestart" && <PrestartView d={d} />}
-              {view === "perf" && <PerfView d={d} />}
+              {view === "overview" && <OverviewView d={d} live={live} assets={assets} onOpenTimeline={openTimeline} onNavigate={setView} />}
+              {view === "logouts" && <OperatorMetricsView d={d} onPickDate={pickDate} />}
+              {view === "util" && <UtilView d={d} fleet={effMmus.size || allMmus.length} selectedDays={rangeDays(lo, hi)} onPickDate={pickDate} onPickMmu={pickMmu} />}
+              {view === "prestart" && <PrestartView d={d} onPickMmu={pickMmu} />}
+              {view === "perf" && <PerfView d={d} onPickMmu={pickMmu} />}
               {view === "timeline" && <TimelineView selected={effMmus} />}
             </div>
           )}
@@ -304,6 +317,12 @@ function SiteStatus({ assets, live, onOpenTimeline }: { assets: Asset[]; live: M
                     <span className="font-semibold text-fg">{asset.display_name || asset.fleet_no}</span>
                     <div className="flex flex-col items-end gap-1">
                       <Badge tone={!m ? "muted" : onShift ? "ok" : "muted"}>
+                        {onShift && (
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-60" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-ok shadow-[0_0_4px_1px_rgba(22,163,74,0.55)]" />
+                          </span>
+                        )}
                         {!m ? "No data" : onShift ? "On shift" : "Off shift"}
                       </Badge>
                       {missedEnd && (
@@ -341,8 +360,8 @@ type D = {
 };
 
 /* ── Overview: site tiles + KPIs + live status pie + activity mix ── */
-function OverviewView({ d, live, assets, onOpenTimeline }:
-  { d: D; live: MmuStatus[]; assets: Asset[]; onOpenTimeline: (fleet: string) => void }) {
+function OverviewView({ d, live, assets, onOpenTimeline, onNavigate }:
+  { d: D; live: MmuStatus[]; assets: Asset[]; onOpenTimeline: (fleet: string) => void; onNavigate: (v: ViewId) => void }) {
   // Current fleet status — what each active unit is doing RIGHT NOW (live snapshot).
   const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
   const fleet: { fleet_no: string }[] = assets.length ? assets : live.map((m) => ({ fleet_no: m.fleet_no }));
@@ -357,8 +376,17 @@ function OverviewView({ d, live, assets, onOpenTimeline }:
   const statusData = Object.entries(stateCount).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   const statusColors: Record<string, string> = { ...ACTIVITY_COLOURS, "On shift": "#59A14F", "Off shift": "#BAB0AC", "No data": "#D7DBE0" };
 
-  const mix = groupSum(d.act, (r) => r.activity_type || "Other", (r) => r.duration_hours)
+  // Activity mix donut — top 5 + Other so the legend stays legible (secondary view).
+  const mixAll = groupSum(d.act, (r) => r.activity_type || "Other", (r) => r.duration_hours)
     .map((x) => ({ name: x.name, value: round1(x.value) })).sort((a, b) => b.value - a.value);
+  const mixOther = round1(mixAll.slice(5).reduce((s, x) => s + x.value, 0));
+  const mix = mixOther > 0 ? [...mixAll.slice(0, 5), { name: "Other", value: mixOther }] : mixAll;
+
+  // Responsibility lens (the client exhibit).
+  const segments = responsibilitySegments(d.act);
+  const waiting = segments.find((s) => s.name === "Waiting on mine");
+
+  const missStatus = d.k.missingPct > 25 ? "bad" : d.k.missingPct > 10 ? "warn" : "ok";
 
   return (
     <div className="space-y-6">
@@ -369,17 +397,28 @@ function OverviewView({ d, live, assets, onOpenTimeline }:
         <div className="h-px flex-1 bg-border" />
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Shift sessions" value={d.k.totalSessions} />
-        <Stat label="Active MMUs" value={d.k.activeMmus} />
-        <Stat label="Missing shift-ends" value={d.k.missingLogouts} sub={`${d.k.missingPct.toFixed(0)}% of sessions`} />
-        <Stat label="Pre-start faults" value={d.k.faults} />
+        <Stat label="Missing shift-ends" value={d.k.missingLogouts} sub={`${d.k.missingPct.toFixed(0)}% of sessions · click to investigate`} status={missStatus} onClick={() => onNavigate("logouts")} />
+        <Stat label="Active MMUs" value={d.k.activeMmus} sub="click to investigate" onClick={() => onNavigate("util")} />
+        <Stat label="Pre-start faults" value={d.k.faults} sub="click to investigate" status={d.k.faults > 0 ? "warn" : "ok"} onClick={() => onNavigate("prestart")} />
+        <Stat label="Shift sessions" value={d.k.totalSessions} sub="click to investigate" onClick={() => onNavigate("perf")} />
       </div>
+
+      <ChartCard title="Where the shift went — by responsibility"
+        subtitle="Every logged hour bucketed by who owns the time. One bar, one argument.">
+        <ResponsibilityBar segments={segments} />
+        {waiting && waiting.pct > 0 && (
+          <div className="mt-4 rounded-lg border border-accent/40 bg-accent/5 px-3 py-2 text-sm">
+            <span className="font-semibold text-accent">{waiting.pct}% ({waiting.hours.toFixed(1)}h)</span> of logged fleet time was spent <span className="font-medium">waiting on mine-supplied explosives &amp; personnel</span> — logged evidence, not idle time.
+          </div>
+        )}
+      </ChartCard>
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ChartCard title="Current fleet status" subtitle="What each unit is doing right now (live)">
           <Donut data={statusData} colorMap={statusColors} />
         </ChartCard>
-        <ChartCard title="Fleet-wide activity mix" subtitle="Share of logged hours over the selected range">
-          <Donut data={mix} colorMap={ACTIVITY_COLOURS} />
+        <ChartCard title="Fleet-wide activity mix" subtitle="Share of logged hours over the selected range (top 5 + other)">
+          <Donut data={mix} colorMap={{ ...ACTIVITY_COLOURS, Other: "#BAB0AC" }} />
         </ChartCard>
       </div>
     </div>
@@ -399,41 +438,46 @@ function OperatorPicker({ all, selected, onChange }:
   const label = selected.size === all.length ? "All operators"
     : selected.size === 0 ? "No operators"
     : `${selected.size} of ${all.length} operators`;
+  const allActive = selected.size === all.length;
+  const noneActive = selected.size === 0;
+  const pill = (active: boolean) =>
+    `rounded-lg border px-2.5 py-1 text-xs ${active ? "border-accent bg-accent font-semibold text-white" : "border-border bg-surface hover:bg-bg"}`;
   return (
-    <div className="relative">
-      <button onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-1.5 text-sm hover:bg-bg">
-        {label} <span className="text-muted">▾</span>
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 w-64 rounded-xl border border-border bg-surface p-2 shadow-lg">
-            <div className="mb-1 flex justify-between px-1 text-xs">
-              <button onClick={() => onChange(new Set(all))} className="text-accent hover:underline">All</button>
-              <button onClick={() => onChange(new Set())} className="text-accent hover:underline">None</button>
+    <div className="flex items-center gap-2">
+      <div className="relative">
+        <button onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-1.5 text-sm hover:bg-bg">
+          {label} <span className="text-muted">▾</span>
+        </button>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <div className="absolute z-20 mt-1 w-64 rounded-xl border border-border bg-surface p-2 shadow-lg">
+              <div className="max-h-64 overflow-auto">
+                {all.map((o) => (
+                  <label key={o} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-bg">
+                    <input type="checkbox" checked={selected.has(o)}
+                      onChange={() => { const n = new Set(selected); n.has(o) ? n.delete(o) : n.add(o); onChange(n); }} />
+                    <span>{o}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-            <div className="max-h-64 overflow-auto">
-              {all.map((o) => (
-                <label key={o} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-bg">
-                  <input type="checkbox" checked={selected.has(o)}
-                    onChange={() => { const n = new Set(selected); n.has(o) ? n.delete(o) : n.add(o); onChange(n); }} />
-                  <span>{o}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </div>
+      <button onClick={() => onChange(new Set(all))} className={pill(allActive)}>All</button>
+      <button onClick={() => onChange(new Set())} className={pill(noneActive)}>None</button>
     </div>
   );
 }
 
-function OperatorMetricsView({ d }: { d: D }) {
+function OperatorMetricsView({ d, onPickDate }: { d: D; onPickDate: (day: string) => void }) {
   const allOps = useMemo(() => uniqueSorted(d.sessions.map((s) => s.operator_name)), [d.sessions]);
   const [opSel, setOpSel] = useState<Set<string> | null>(null);  // null = all
   const effOps = opSel ?? new Set(allOps);
   const has = (op?: string | null) => effOps.has(op || "—");
+  const pickOp = (name: string) => setOpSel(new Set([name]));  // click a bar → filter to that operator
 
   // Pre-start presence keyed by operator + MMU + reporting date.
   const keyOf = (op?: string | null, mmu?: string | null, date?: string | null) =>
@@ -465,7 +509,7 @@ function OperatorMetricsView({ d }: { d: D }) {
   // Operators to follow up: ≥3 shifts and under 60% pre-start compliance.
   const flagged = opStats.filter((o) => o.shifts >= 3 && o.compliance < 0.6).sort((a, b) => a.compliance - b.compliance);
 
-  const byOp = groupCount(noEnd, (s) => s.operator_name || "—").sort((a, b) => a.value - b.value);
+  const byOp = groupCount(noEnd, (s) => s.operator_name || "—").sort((a, b) => b.value - a.value);
   const byDate = groupCount(noEnd, (s) => s.reporting_date || "—").sort((a, b) => a.name.localeCompare(b.name));
 
   const compBars = opStats.map((o) => ({ name: o.operator, value: Math.round(o.compliance * 100) })).sort((a, b) => a.value - b.value);
@@ -473,6 +517,15 @@ function OperatorMetricsView({ d }: { d: D }) {
   compBars.forEach((b) => (compColors[b.name] = b.value < 60 ? RED : b.value < 85 ? AMBER : GREEN));
 
   const benchByOp = groupCount(benchAll, (a) => a.operator_name || "—").sort((a, b) => b.value - a.value);
+
+  // Productivity leaderboard: productive hours (loading / FQMO / reload) per operator.
+  const prodByOp = new Map<string, number>();
+  for (const a of d.act) {
+    if (!has(a.operator_name) || responsibilityOf(a.activity_type || "") !== "Productive") continue;
+    const op = a.operator_name || "—";
+    prodByOp.set(op, (prodByOp.get(op) || 0) + (a.duration_hours || 0));
+  }
+  const leaderboard = Array.from(prodByOp, ([name, v]) => ({ name, value: round1(v) })).sort((a, b) => b.value - a.value);
 
   // Single-operator daily shift-quality timeline (the per-operator drilldown).
   const single = effOps.size === 1 ? [...effOps][0] : null;
@@ -512,17 +565,22 @@ function OperatorMetricsView({ d }: { d: D }) {
         <Stat label="Operators on shift" value={operators} sub="ran ≥1 shift in range" />
         <Stat label="Benches loaded" value={benches} sub="loading-explosives events" />
         <Stat label="Benches per operator" value={operators ? round1(benches / operators) : 0} />
-        <Stat label="Pre-start compliance" value={`${Math.round(overallCompliance * 100)}%`} sub={`${totalPrestart} of ${totalShifts} shifts`} />
+        <Stat label="Pre-start compliance" value={`${Math.round(overallCompliance * 100)}%`} sub={`${totalPrestart} of ${totalShifts} shifts`}
+          status={overallCompliance >= 0.85 ? "ok" : overallCompliance >= 0.6 ? "warn" : "bad"} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Missing shift-end logs by operator"><BarH data={byOp} colorMap={paletteMap(byOp.map((x) => x.name))} xLabel="Sessions Without Shift End" yLabel="Operator" /></ChartCard>
-        <ChartCard title="Missing shift-end logs by date"><BarV data={byDate} colorMap={paletteMap(byDate.map((x) => x.name))} xLabel="Date" yLabel="Sessions Without Shift End" /></ChartCard>
+        <ChartCard title="Missing shift-end logs by operator" subtitle="Click a bar to filter to that operator">
+          <BarH data={byOp} xLabel="Sessions without shift-end" yLabel="Operator" onSelect={pickOp} />
+        </ChartCard>
+        <ChartCard title="Missing shift-end logs by date" subtitle="Click a bar to filter to that day">
+          <BarV data={byDate} xLabel="Date" yLabel="Sessions without shift-end" onSelect={onPickDate} />
+        </ChartCard>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Pre-start compliance by operator" subtitle="Share of shifts with a matching pre-start · green ≥85% · amber ≥60% · red <60%">
-          <BarH data={compBars} colorMap={compColors} xLabel="Pre-start compliance (%)" yLabel="Operator" />
+        <ChartCard title="Pre-start compliance by operator" subtitle="Share of shifts with a matching pre-start · green ≥85% · amber ≥60% · red <60% · click a bar to filter">
+          <BarH data={compBars} colorMap={compColors} xLabel="Pre-start compliance (%)" yLabel="Operator" onSelect={pickOp} />
         </ChartCard>
         <Card>
           <CardBody>
@@ -544,9 +602,14 @@ function OperatorMetricsView({ d }: { d: D }) {
         </Card>
       </div>
 
-      <ChartCard title="Benches loaded by operator" subtitle="Each loading-explosives event ≈ one bench loaded">
-        <BarH data={benchByOp} colorMap={paletteMap(benchByOp.map((x) => x.name))} xLabel="Benches loaded" yLabel="Operator" />
-      </ChartCard>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ChartCard title="Benches loaded by operator" subtitle="Each loading-explosives event ≈ one bench loaded · click a bar to filter">
+          <BarH data={benchByOp} xLabel="Benches loaded" yLabel="Operator" onSelect={pickOp} />
+        </ChartCard>
+        <ChartCard title="Productivity leaderboard" subtitle="Productive hours by operator (loading · FQMO · reload) · click a bar to filter">
+          <BarH data={leaderboard} xLabel="Productive hours" yLabel="Operator" onSelect={pickOp} />
+        </ChartCard>
+      </div>
 
       {single ? (
         <ChartCard title={`Daily shift quality — ${single}`}
@@ -563,7 +626,7 @@ function OperatorMetricsView({ d }: { d: D }) {
 }
 
 /* ── MMU Utilization ── */
-function UtilView({ d, fleet, selectedDays }: { d: D; fleet: number; selectedDays: number }) {
+function UtilView({ d, fleet, selectedDays, onPickDate, onPickMmu }: { d: D; fleet: number; selectedDays: number; onPickDate: (day: string) => void; onPickMmu: (fleet: string) => void }) {
   // Distinct days with loading-explosives events, vs the selected range length.
   // Loading is the metric that matters — days with none aren't productive days.
   // Matches the fleet utilization chart below.
@@ -621,12 +684,8 @@ function UtilView({ d, fleet, selectedDays }: { d: D; fleet: number; selectedDay
     });
   const peak = utilData.reduce((m, x) => Math.max(m, x.value), 0);
   const avg = utilData.length ? utilData.reduce((s, x) => s + x.value, 0) / utilData.length : 0;
-  // colour each day by how much of the fleet was loading (green = high)
-  const utilColors: Record<string, string> = {};
-  utilData.forEach((x) => {
-    const pct = fleet ? x.value / fleet : 0;
-    utilColors[x.name] = pct >= 0.66 ? "#59A14F" : pct >= 0.33 ? "#F1A340" : "#E15759";
-  });
+  // Performance-vs-target, not RAG: target = 50% of the reporting fleet loading.
+  const utilTarget = Math.max(1, Math.round(fleet * 0.5));
 
   return (
     <div className="space-y-6">
@@ -639,13 +698,13 @@ function UtilView({ d, fleet, selectedDays }: { d: D; fleet: number; selectedDay
       </div>
 
       <ChartCard title="Fleet utilization — MMUs loading explosives per day"
-        subtitle={`Distinct MMUs that logged loading on each activity day · of ${fleet} reporting MMUs · green ≥⅔ · amber ≥⅓ · red <⅓ of fleet`}>
-        <BarV data={utilData} colorMap={utilColors} xLabel="Date" yLabel="MMUs loading explosives" height={340} />
+        subtitle={`Distinct MMUs loading on each activity day vs target (50% of ${fleet} = ${utilTarget}). Green = met or beat target · click a day to filter.`}>
+        <BarV data={utilData} target={utilTarget} targetLabel="50% fleet" xLabel="Date" yLabel="MMUs loading explosives" height={340} onSelect={onPickDate} />
       </ChartCard>
 
       {hasBench && (
-        <ChartCard title="Benches loaded per day by location" subtitle="Loading-explosives events stacked by bench location">
-          <StackedBar rows={benchPiv.data} xKey="x" series={benchPiv.series} colorMap={benchColors} />
+        <ChartCard title="Benches loaded per day by location" subtitle="Loading-explosives events stacked by bench location · click a day to filter">
+          <StackedBar rows={benchPiv.data} xKey="x" series={benchPiv.series} colorMap={benchColors} onSelect={onPickDate} />
         </ChartCard>
       )}
 
@@ -657,7 +716,9 @@ function UtilView({ d, fleet, selectedDays }: { d: D; fleet: number; selectedDay
       </ChartCard>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Total activity hours by MMU"><StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={colourMap} /></ChartCard>
+        <ChartCard title="Total activity hours by MMU" subtitle="Click an MMU to filter to that unit">
+          <StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={colourMap} onSelect={onPickMmu} />
+        </ChartCard>
         <ChartCard title="Fleet-wide activity mix"><Donut data={mix} colorMap={ACTIVITY_COLOURS} /></ChartCard>
       </div>
       <ChartCard title="Daily activity hours trend"><AreaTrend rows={daily.data} xKey="x" series={daily.series} colorMap={colourMap} /></ChartCard>
@@ -666,7 +727,7 @@ function UtilView({ d, fleet, selectedDays }: { d: D; fleet: number; selectedDay
 }
 
 /* ── Pre-start faults ── */
-function PrestartView({ d }: { d: D }) {
+function PrestartView({ d, onPickMmu }: { d: D; onPickMmu: (fleet: string) => void }) {
   const faults = d.ps.filter((p) => p.fault_flag);
   const breakdowns = d.act.filter((r) => r.activity_type === "Breakdown");
 
@@ -677,7 +738,7 @@ function PrestartView({ d }: { d: D }) {
   let topMmu = "—", topN = 0;
   for (const [m, n] of logByMmu) if (n > topN) { topN = n; topMmu = m; }
 
-  const byMmu = groupCount(faults, (p) => p.mmu_id || "—").sort((a, b) => a.value - b.value);
+  const byMmu = groupCount(faults, (p) => p.mmu_id || "—").sort((a, b) => b.value - a.value);
   const byCat = groupCount(faults, (p) => p.checklist_category || "—").sort((a, b) => b.value - a.value);
   const byItem = groupCount(faults, (p) => (p.checklist_item || "—")).sort((a, b) => b.value - a.value).slice(0, 5)
     .map((x) => ({ name: x.name.length > 48 ? x.name.slice(0, 48) + "…" : x.name, value: x.value }));
@@ -733,25 +794,25 @@ function PrestartView({ d }: { d: D }) {
     });
   }
   incidents.sort((a, b) => String(b.Date).localeCompare(String(a.Date)));
-  const incidentByMmu = groupCount(incidents, (r) => String(r.MMU)).sort((a, b) => a.value - b.value);
+  const incidentByMmu = groupCount(incidents, (r) => String(r.MMU)).sort((a, b) => b.value - a.value);
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Pre-start fault flags" value={faults.length} sub="over selected dates" />
-        <Stat label="Breakdowns logged" value={breakdowns.length} sub="breakdown events" />
-        <Stat label="Most-flagged MMU" value={topMmu} sub={`${topN} faults + breakdowns`} />
+        <Stat label="Pre-start fault flags" value={faults.length} sub="over selected dates" status={faults.length > 0 ? "warn" : "ok"} />
+        <Stat label="Breakdowns logged" value={breakdowns.length} sub="breakdown events" status={breakdowns.length > 0 ? "bad" : "ok"} />
+        <Stat label="Most-flagged MMU" value={topMmu} sub={`${topN} faults + breakdowns · click to filter`} onClick={() => topMmu !== "—" && onPickMmu(topMmu)} />
         <Stat label="No. of times MMU used after pre-start fault" value={incidents.length} sub="loaded explosives same day" />
       </div>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Pre-Start Fault Flags by MMU"><BarH data={byMmu} colorMap={paletteMap(byMmu.map((x) => x.name))} xLabel="Fault Flags" yLabel="MMU" /></ChartCard>
+        <ChartCard title="Pre-start fault flags by MMU" subtitle="Click a bar to filter to that MMU"><BarH data={byMmu} xLabel="Fault flags" yLabel="MMU" onSelect={onPickMmu} /></ChartCard>
         <ChartCard title="Pre-Start Faults by checklist category"><Donut data={byCat} colorMap={CATEGORY_COLOURS} /></ChartCard>
       </div>
       <ChartCard title="Top 5 most flagged Pre-start items"><BarH data={byItem} height={260} /></ChartCard>
 
-      <ChartCard title="Number of times an MMU was used to load explosives after a pre-start fault was logged on same day" subtitle="By MMU">
+      <ChartCard title="Number of times an MMU was used to load explosives after a pre-start fault was logged on same day" subtitle="By MMU · click a bar to filter to that MMU">
         {incidentByMmu.length
-          ? <BarH data={incidentByMmu} colorMap={paletteMap(incidentByMmu.map((x) => x.name))} xLabel="Cases" yLabel="MMU" height={Math.max(160, incidentByMmu.length * 36)} />
+          ? <BarH data={incidentByMmu} xLabel="Cases" yLabel="MMU" height={Math.max(160, incidentByMmu.length * 36)} onSelect={onPickMmu} />
           : <div className="py-10 text-center text-sm text-muted">No cases — flagged MMUs didn&apos;t load explosives again the same day.</div>}
       </ChartCard>
       <ChartCard title="Loaded explosives after fault logged"
@@ -775,32 +836,47 @@ function PrestartView({ d }: { d: D }) {
   );
 }
 
-/* ── Shift performance: time buckets + dead time + start summary ── */
-function PerfView({ d }: { d: D }) {
-  // buckets by MMU
-  const bucketRows = d.act.map((r) => ({ ...r, bucket: ACTIVITY_BUCKET[r.activity_type || ""] || "Other" }));
+/* ── Shift performance: time buckets + start summary ── */
+function PerfView({ d, onPickMmu }: { d: D; onPickMmu: (fleet: string) => void }) {
+  // Responsibility buckets by MMU (same lens as the Overview hero bar).
+  const bucketRows = d.act.map((r) => ({ ...r, bucket: responsibilityOf(r.activity_type || "") }));
   const piv = pivot(bucketRows, (r) => r.mmu_id || "—", (r) => r.bucket, (r) => r.duration_hours);
   piv.data.forEach((row) => piv.series.forEach((s) => (row[s] = round1(Number(row[s]) || 0))));
+  // Keep series in the canonical responsibility order for consistent stacking.
+  piv.series.sort((a, b) => RESPONSIBILITY_ORDER.indexOf(a) - RESPONSIBILITY_ORDER.indexOf(b));
 
-  // start summary table
-  const byOp = new Map<string, number[]>();
-  for (const s of d.sessions) if (s.operator_name && s.shift_start) {
-    const dt = new Date(s.shift_start); const h = dt.getHours() + dt.getMinutes() / 60;
-    (byOp.get(s.operator_name) || byOp.set(s.operator_name, []).get(s.operator_name)!).push(h);
+  // Activity-by-hour heatmap: responsibility × hour-of-day (logged hours), plus
+  // Shift Start / Shift End rows (counts per hour) so the day's shape is visible
+  // without naming operators.
+  const hourGrid: Record<string, number[]> = {};
+  for (const b of RESPONSIBILITY_ORDER) hourGrid[b] = new Array(24).fill(0);
+  for (const r of d.act) {
+    const h = parseInt((r.start_timestamp || "").slice(11, 13), 10);
+    if (isNaN(h) || h < 0 || h > 23) continue;
+    hourGrid[responsibilityOf(r.activity_type || "")][h] += r.duration_hours || 0;
   }
-  const fmtH = (h: number) => `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`;
-  const summary = Array.from(byOp, ([op, hrs]) => ({
-    Operator: op, Sessions: hrs.length, Earliest: fmtH(Math.min(...hrs)), Latest: fmtH(Math.max(...hrs)),
-    "Avg Start": fmtH(hrs.reduce((a, b) => a + b, 0) / hrs.length),
-  }));
+  const startHours = new Array(24).fill(0), endHours = new Array(24).fill(0);
+  for (const s of d.sessions) {
+    const sh = parseInt((s.shift_start || "").slice(11, 13), 10);
+    if (!isNaN(sh) && sh >= 0 && sh < 24) startHours[sh]++;
+    const eh = parseInt((s.shift_end || "").slice(11, 13), 10);
+    if (!isNaN(eh) && eh >= 0 && eh < 24) endHours[eh]++;
+  }
+  const heatColors: Record<string, string> = { ...RESPONSIBILITY_COLOURS, "Shift Start": "#86BCB6", "Shift End": "#FABFD2" };
+  const heatRows = [
+    ...(startHours.some((v) => v > 0) ? [{ label: "Shift Start", values: startHours }] : []),
+    ...RESPONSIBILITY_ORDER.filter((b) => hourGrid[b].some((v) => v > 0)).map((b) => ({ label: b, values: hourGrid[b] })),
+    ...(endHours.some((v) => v > 0) ? [{ label: "Shift End", values: endHours }] : []),
+  ];
 
   return (
     <div className="space-y-6">
-      <ChartCard title="Time distribution by MMU" subtitle="Productive · Movement · Downtime · Maintenance · Safety/Admin">
-        <StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={BUCKET_COLOURS} xLabel="MMU" yLabel="Hours" />
+      <ChartCard title="Time distribution by MMU" subtitle="Productive · Movement · Safety/Admin · Waiting on mine · Idle/Standby · Breakdown · click an MMU to filter">
+        <StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={RESPONSIBILITY_COLOURS} xLabel="MMU" yLabel="Hours" onSelect={onPickMmu} />
       </ChartCard>
-      <ChartCard title="Shift start summary by operator">
-        <DataTable columns={[{ key: "Operator", label: "Operator" }, { key: "Sessions", label: "Sessions" }, { key: "Earliest", label: "Earliest" }, { key: "Latest", label: "Latest" }, { key: "Avg Start", label: "Avg Start" }]} rows={summary} />
+
+      <ChartCard title="Activity by hour of day" subtitle="When the day unfolds · shift start/end + each kind of work by hour · darker = busier (each row scaled to itself)">
+        <HourHeatmap rows={heatRows} colors={heatColors} />
       </ChartCard>
     </div>
   );
@@ -858,7 +934,20 @@ function TimelineView({ selected }: { selected: Set<string> }) {
   if (endTime) markers.push({ iso: endTime, name: "Shift End", pct: 100, color: "#FABFD2" });
 
   const faultEvents = events.filter((e) => e.fault_flag);
-  const log = acts.map((a) => ({ Time: hh(a.time), Activity: a.activity || "—", Operator: a.operator || "—", Flag: a.fault_flag ? "⚠ fault" : "" }));
+  // Duration = gap to the next logged event (capped 4h); same-tz naive times so
+  // the difference is correct regardless of viewer timezone. Open last = "—".
+  const durMin = new Map<string, number>();
+  for (let i = 0; i < events.length - 1; i++) {
+    const t = Date.parse(events[i].time || ""), nt = Date.parse(events[i + 1].time || "");
+    if (!isNaN(t) && !isNaN(nt) && nt > t) durMin.set(events[i].submission_id || String(i), Math.min(Math.round((nt - t) / 60000), 240));
+  }
+  const log = acts.map((a) => ({
+    Time: hh(a.time),
+    Activity: a.activity || "—",
+    "Duration (min)": durMin.get(a.submission_id || "") ?? "—",
+    Operator: a.operator || "—",
+    Flag: a.fault_flag ? "⚠ fault" : "",
+  }));
   const dayLabel = (startTime || "").slice(0, 10) || "—";
 
   // De-cluster: a run of events that are close together folds into ONE dot with
@@ -935,7 +1024,7 @@ function TimelineView({ selected }: { selected: Set<string> }) {
 
       <ChartCard title="Shift activity log" subtitle="Everything logged during this shift, in order (live)">
         <DataTable
-          columns={[{ key: "Time", label: "Time" }, { key: "Activity", label: "Activity" }, { key: "Operator", label: "Operator" }, { key: "Flag", label: "Flag" }]}
+          columns={[{ key: "Time", label: "Time" }, { key: "Activity", label: "Activity" }, { key: "Duration (min)", label: "Duration (min)" }, { key: "Operator", label: "Operator" }, { key: "Flag", label: "Flag" }]}
           rows={log} csvName={`shift_${mmu}_${dayLabel}.csv`} />
       </ChartCard>
     </div>

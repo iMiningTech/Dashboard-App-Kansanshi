@@ -2,10 +2,10 @@
 
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, Legend,
-  CartesianGrid, PieChart, Pie, AreaChart, Area, LabelList,
+  CartesianGrid, PieChart, Pie, AreaChart, Area, LabelList, ReferenceLine,
 } from "recharts";
 import { Card, CardBody } from "@/components/ui";
-import { MASTER_PALETTE } from "@/lib/colors";
+import { MASTER_PALETTE, BRAND_NAVY, BRAND_ORANGE, RESPONSIBILITY_COLOURS } from "@/lib/colors";
 
 const AXIS = { fontSize: 12, fill: "rgb(100 116 130)" };
 const GRID = "rgb(224 230 235)";
@@ -22,21 +22,43 @@ export function ChartCard({ title, subtitle, children }: { title: string; subtit
   );
 }
 
-// Horizontal bar, one row per category, each coloured from a map.
-export function BarH({ data, colorMap, height = 360, xLabel, yLabel }:
-  { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number; xLabel?: string; yLabel?: string }) {
+// Horizontal bar, one row per category. Default `accent` mode: one brand navy
+// with the single largest (actionable) bar in orange + inline values — colour
+// only carries meaning where it must. Pass a colorMap to keep encoded colour
+// (e.g. RAG compliance), which overrides accent.
+export function BarH({ data, colorMap, height = 360, xLabel, yLabel, accent = true, onSelect }:
+  { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number; xLabel?: string; yLabel?: string; accent?: boolean; onSelect?: (name: string) => void }) {
   if (!data.length) return <Empty />;
+  const handleClick = onSelect ? ((entry: { name?: string }) => { if (entry?.name) onSelect(entry.name); }) : undefined;
+  // A single category is a stat, not a chart — a full-width lone bar reads oddly.
+  // Centre it in the widget area so it looks intentional.
+  if (data.length === 1) {
+    return (
+      <div style={{ height }} className="flex flex-col items-center justify-center gap-1 text-center">
+        <span className="text-sm text-muted">{data[0].name}</span>
+        <span className="text-4xl font-semibold tracking-tight text-fg">{data[0].value}</span>
+        {xLabel && <span className="text-xs text-muted">{xLabel.toLowerCase()}</span>}
+      </div>
+    );
+  }
+  const useAccent = accent && !colorMap;
+  const maxV = Math.max(...data.map((d) => d.value));
+  const fillOf = (d: { name: string; value: number }, i: number) =>
+    colorMap ? (colorMap[d.name] || MASTER_PALETTE[i % MASTER_PALETTE.length])
+    : useAccent ? (d.value === maxV ? BRAND_ORANGE : BRAND_NAVY)
+    : MASTER_PALETTE[i % MASTER_PALETTE.length];
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
-        <BarChart data={data} layout="vertical" margin={{ left: yLabel ? 24 : 16, right: 16, bottom: xLabel ? 18 : 0 }}>
+        <BarChart data={data} layout="vertical" margin={{ left: yLabel ? 24 : 16, right: useAccent ? 34 : 16, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
-          <XAxis type="number" tick={AXIS} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
+          <XAxis type="number" allowDecimals={false} tick={AXIS} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
           <YAxis type="category" dataKey="name" width={150} tick={AXIS}
                  label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
-          <Bar dataKey="value" radius={[0, 5, 5, 0]}>
-            {data.map((d, i) => <Cell key={i} fill={colorMap?.[d.name] || MASTER_PALETTE[i % MASTER_PALETTE.length]} />)}
+          <Bar dataKey="value" radius={[0, 5, 5, 0]} onClick={handleClick as never}>
+            {data.map((d, i) => <Cell key={i} fill={fillOf(d, i)} />)}
+            {useAccent && <LabelList dataKey="value" position="right" fontSize={11} fill="rgb(31 41 55)" />}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -46,9 +68,33 @@ export function BarH({ data, colorMap, height = 360, xLabel, yLabel }:
 
 // Vertical bar, one column per category (e.g. by date), with axis labels.
 // `barLabels` maps name → a short status word drawn vertically inside the bar.
-export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels }:
-  { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number; xLabel?: string; yLabel?: string; barLabels?: Record<string, string> }) {
+// `target` reframes as performance-vs-target: a dashed line + green only when a
+// bar beats target (neutral navy otherwise) — so normal days don't read as alarms.
+// Otherwise `accent` mode highlights the single largest bar in orange.
+export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels, accent = true, target, targetLabel, onSelect }:
+  { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number; xLabel?: string; yLabel?: string; barLabels?: Record<string, string>; accent?: boolean; target?: number; targetLabel?: string; onSelect?: (name: string) => void }) {
   if (!data.length) return <Empty />;
+  // A single column (e.g. one date selected) is a stat, not a chart — centre it.
+  // Labelled variants (daily shift-quality) keep their bar; target charts show
+  // the target alongside the value.
+  if (data.length === 1 && !barLabels) {
+    return (
+      <div style={{ height }} className="flex flex-col items-center justify-center gap-1 text-center">
+        <span className="text-sm text-muted">{data[0].name}</span>
+        <span className="text-4xl font-semibold tracking-tight text-fg">{data[0].value}</span>
+        {yLabel && <span className="text-xs text-muted">{yLabel.toLowerCase()}{target != null ? ` · target ${target}` : ""}</span>}
+      </div>
+    );
+  }
+  const useAccent = accent && !colorMap && target == null;
+  const handleClick = onSelect ? ((entry: { name?: string }) => { if (entry?.name) onSelect(entry.name); }) : undefined;
+  const maxV = Math.max(...data.map((d) => d.value));
+  const fillOf = (d: { name: string; value: number }, i: number) =>
+    target != null ? (d.value >= target ? "#59A14F" : BRAND_NAVY)
+    : colorMap ? (colorMap[d.name] || MASTER_PALETTE[i % MASTER_PALETTE.length])
+    : useAccent ? (d.value === maxV ? BRAND_ORANGE : BRAND_NAVY)
+    : MASTER_PALETTE[i % MASTER_PALETTE.length];
+  const showValues = useAccent || target != null;
   const renderText = (p: { x?: number | string; y?: number | string; width?: number | string; height?: number | string; value?: string | number }) => {
     const x = Number(p.x) || 0, y = Number(p.y) || 0, width = Number(p.width) || 0, h = Number(p.height) || 0;
     const txt = barLabels?.[String(p.value)];
@@ -60,18 +106,23 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels }
     );
   };
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ left: yLabel ? 24 : 16, right: 16, bottom: xLabel ? 18 : 0 }}>
+        <BarChart data={data} margin={{ left: yLabel ? 24 : 16, right: target != null ? 92 : 16, top: showValues ? 16 : 0, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
           <XAxis type="category" dataKey="name" tick={AXIS}
                  label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
           <YAxis type="number" allowDecimals={false} tick={AXIS}
                  label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
-          <Bar dataKey="value" radius={[5, 5, 0, 0]}>
-            {data.map((d, i) => <Cell key={i} fill={colorMap?.[d.name] || MASTER_PALETTE[i % MASTER_PALETTE.length]} />)}
+          {target != null && (
+            <ReferenceLine y={target} stroke={BRAND_ORANGE} strokeDasharray="5 4"
+              label={{ value: targetLabel || `target ${target}`, position: "right", fontSize: 11, fill: BRAND_ORANGE }} />
+          )}
+          <Bar dataKey="value" radius={[5, 5, 0, 0]} onClick={handleClick as never}>
+            {data.map((d, i) => <Cell key={i} fill={fillOf(d, i)} />)}
             {barLabels && <LabelList dataKey="name" content={renderText as never} />}
+            {showValues && !barLabels && <LabelList dataKey="value" position="top" fontSize={11} fill="rgb(31 41 55)" />}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -80,13 +131,19 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels }
 }
 
 // Stacked/grouped vertical bar. rows: [{ x, [series]: number }]. series with colours.
-export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked = true, xLabel, yLabel }:
-  { rows: Record<string, unknown>[]; xKey: string; series: string[]; colorMap: Record<string, string>; height?: number; stacked?: boolean; xLabel?: string; yLabel?: string }) {
+// `onSelect` makes a column clickable → returns its x-axis category.
+export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked = true, xLabel, yLabel, onSelect }:
+  { rows: Record<string, unknown>[]; xKey: string; series: string[]; colorMap: Record<string, string>; height?: number; stacked?: boolean; xLabel?: string; yLabel?: string; onSelect?: (x: string) => void }) {
   if (!rows.length) return <Empty />;
+  // Chart-level click → activeLabel is the x-axis category of the clicked column
+  // (reliable for stacked bars; a per-segment Bar onClick returns segment data).
+  const handleClick = onSelect ? ((state: { activeLabel?: string | number }) => {
+    if (state?.activeLabel != null) onSelect(String(state.activeLabel));
+  }) : undefined;
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
-        <BarChart data={rows} margin={{ left: yLabel ? 16 : 8, right: 8, bottom: xLabel ? 44 : 0 }}>
+        <BarChart data={rows} margin={{ left: yLabel ? 16 : 8, right: 8, bottom: xLabel ? 44 : 0 }} onClick={handleClick as never}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey={xKey} tick={AXIS}
                  label={xLabel ? { value: xLabel, position: "insideBottom", offset: -2, ...AXIS } : undefined} />
@@ -176,6 +233,22 @@ export function AreaTrend({ rows, xKey, series, colorMap, height = 320 }:
 
 export function DataTable({ columns, rows, csvName }:
   { columns: { key: string; label: string }[]; rows: Record<string, unknown>[]; csvName?: string }) {
+  // Right-align purely numeric columns (counts, durations, %) — dates/times/text
+  // stay left. Detected from the data so callers don't have to annotate.
+  const numericCols = new Set(
+    columns.filter((c) => {
+      let hasNum = false;
+      for (const r of rows) {
+        const v = r[c.key];
+        if (v == null || v === "" || v === "—") continue;
+        if (typeof v === "number") { hasNum = true; continue; }
+        const s = String(v).replace(/[,%\s]/g, "");
+        if (s !== "" && !isNaN(Number(s))) hasNum = true; else return false;
+      }
+      return hasNum;
+    }).map((c) => c.key)
+  );
+  const cls = (key: string) => `px-3 py-2 ${numericCols.has(key) ? "text-right tabular-nums" : ""}`;
   function downloadCsv() {
     const header = columns.map((c) => `"${c.label}"`).join(",");
     const body = rows.map((r) => columns.map((c) => `"${String(r[c.key] ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -190,14 +263,14 @@ export function DataTable({ columns, rows, csvName }:
       <div className="max-h-80 overflow-auto rounded-xl border border-border">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-bg text-left text-xs uppercase tracking-wide text-muted">
-            <tr>{columns.map((c) => <th key={c.key} className="px-3 py-2 font-medium">{c.label}</th>)}</tr>
+            <tr>{columns.map((c) => <th key={c.key} className={`${cls(c.key)} font-medium`}>{c.label}</th>)}</tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr><td colSpan={columns.length} className="px-3 py-6 text-center text-muted">No records.</td></tr>
             ) : rows.map((r, i) => (
               <tr key={i} className="border-t border-border hover:bg-bg/60">
-                {columns.map((c) => <td key={c.key} className="px-3 py-2">{String(r[c.key] ?? "—")}</td>)}
+                {columns.map((c) => <td key={c.key} className={cls(c.key)}>{String(r[c.key] ?? "—")}</td>)}
               </tr>
             ))}
           </tbody>
@@ -208,6 +281,74 @@ export function DataTable({ columns, rows, csvName }:
           ⬇ Download CSV
         </button>
       )}
+    </div>
+  );
+}
+
+// Single full-width stacked bar: every logged hour bucketed by responsibility.
+// One bar, one argument — the "Waiting on mine" band is the client exhibit.
+export function ResponsibilityBar({ segments }:
+  { segments: { name: string; hours: number; pct: number }[] }) {
+  if (!segments.length) return <Empty />;
+  return (
+    <div>
+      <div className="flex h-12 w-full overflow-hidden rounded-lg border border-border">
+        {segments.map((s) => (
+          <div key={s.name} title={`${s.name}: ${s.hours.toFixed(1)}h (${s.pct}%)`}
+               className="flex items-center justify-center text-xs font-semibold text-white"
+               style={{ width: `${s.pct}%`, background: RESPONSIBILITY_COLOURS[s.name] || "#BAB0AC" }}>
+            {s.pct >= 7 ? `${s.pct}%` : ""}
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {segments.map((s) => (
+          <span key={s.name} className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: RESPONSIBILITY_COLOURS[s.name] || "#BAB0AC" }} />
+            {s.name} <span className="text-muted">{s.pct}%</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function rgba(hex: string, a: number) {
+  const m = hex.replace("#", "");
+  const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+// Hour-of-day × category heatmap. Each row coloured by its category colour,
+// cell opacity scaled to its value vs the grid max. Shows the site's rhythm.
+export function HourHeatmap({ rows, colors, unit = "h" }:
+  { rows: { label: string; values: number[] }[]; colors: Record<string, string>; unit?: string }) {
+  if (!rows.length) return <Empty />;
+  const hours = Array.from({ length: 24 }, (_, h) => h);
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[660px]">
+        <div className="flex">
+          <div className="w-32 shrink-0" />
+          {hours.map((h) => <div key={h} className="flex-1 text-center text-[9px] text-muted">{h % 3 === 0 ? h : ""}</div>)}
+        </div>
+        {rows.map((r) => {
+          const rmax = Math.max(1, ...r.values);  // per-row intensity: each row shows its own pattern
+          return (
+            <div key={r.label} className="mt-0.5 flex items-center">
+              <div className="w-32 shrink-0 truncate pr-2 text-right text-xs text-muted">{r.label}</div>
+              {r.values.map((v, h) => (
+                <div key={h} className="flex-1 px-[1px]">
+                  <div title={`${r.label} · ${String(h).padStart(2, "0")}:00 · ${v % 1 ? v.toFixed(1) : v}${unit}`}
+                    className="h-6 rounded-sm"
+                    style={{ background: v > 0 ? rgba(colors[r.label] || "#4E79A7", 0.18 + 0.82 * (v / rmax)) : "rgb(241 245 249)" }} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+        <div className="mt-1 flex"><div className="w-32 shrink-0" /><div className="flex-1 text-[9px] text-muted">hour of day →</div></div>
+      </div>
     </div>
   );
 }
