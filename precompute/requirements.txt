@@ -1,0 +1,3 @@
+# pandas/numpy/pyarrow come from the AWS-managed AWSSDKPandas layer; boto3 is in
+# the Lambda runtime. Only the amalgamation's extra pure-Python dep is needed here.
+PyYAML>=6.0

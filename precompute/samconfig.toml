@@ -1,0 +1,19 @@
+version = 0.1
+
+[dev.deploy.parameters]
+stack_name = "jotform-precompute-dev"
+region = "us-east-1"
+profile = "default"
+resolve_s3 = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=dev"
+confirm_changeset = true
+
+[prod.deploy.parameters]
+stack_name = "jotform-precompute-prod"
+region = "us-east-1"
+profile = "imining-dev"
+resolve_s3 = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=prod"
+confirm_changeset = true

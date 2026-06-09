@@ -1,0 +1,5 @@
+# Vendored fresh from ../src and ../config before each build (single source of
+# truth stays in the repo root). Not committed — avoids drift.
+/src/
+/config/
+.aws-sam/

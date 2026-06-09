@@ -4,9 +4,11 @@ name: Precompute dashboard datasets
 # serves them fast. Reuses the proven Python pipeline.
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"   # every 15 minutes
-  workflow_dispatch: {}        # allow manual runs
+  # Scheduled cron RETIRED — precompute is now event-driven on AWS: the ingest
+  # webhook nudges an SQS queue → precompute Lambda (debounced), with a 30-min
+  # EventBridge backstop. See precompute/ (stack jotform-precompute-<env>).
+  # Kept for manual/dev runs only.
+  workflow_dispatch: {}
 
 jobs:
   precompute:

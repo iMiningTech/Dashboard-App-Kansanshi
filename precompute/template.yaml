@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Kansanshi dashboard precompute — runs the Python amalgamation as a Lambda and
+  publishes the window JSON to S3. Triggered by an SQS queue (nudged by the
+  ingest webhook on each submission, debounced) with an EventBridge backstop.
+  Replaces the flaky GitHub Actions cron. Reads the submissions table + clean S3
+  objects (created by the ../infra stack) and writes dashboard/<window>/ JSON.
+
+Parameters:
+  Customer:
+    Type: String
+    Default: orica-kansanshi
+  Environment:
+    Type: String
+    AllowedValues: [dev, prod]
+  PandasLayerArn:
+    Type: String
+    Description: >
+      AWS-managed "AWS SDK for pandas" layer ARN for python3.11 / x86_64 in this
+      region. Find the current version in the AWS docs (aws-sdk-pandas releases)
+      or console. Format:
+      arn:aws:lambda:<region>:336392948345:layer:AWSSDKPandas-Python311:<ver>
+    Default: "arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python311:31"
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Architectures: [x86_64]
+    Timeout: 300
+    MemorySize: 1024
+
+Resources:
+  PrecomputeDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${Customer}-precompute-dlq-${Environment}"
+      MessageRetentionPeriod: 1209600   # 14 days
+
+  PrecomputeQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${Customer}-precompute-${Environment}"   # fixed name → webhook references it without a cross-stack import
+      VisibilityTimeout: 1860            # > 6x function timeout
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PrecomputeDLQ.Arn
+        maxReceiveCount: 3
+
+  PrecomputeFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub "${Customer}-jotform-precompute-${Environment}"
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      ReservedConcurrentExecutions: 1    # serialise runs; bursts coalesce
+      Layers:
+        - !Ref PandasLayerArn
+      Environment:
+        Variables:
+          DATA_BUCKET: !Sub "${Customer}-jotform-${Environment}-${AWS::AccountId}"
+          SUBMISSIONS_TABLE: !Sub "${Customer}-jotform-submissions-${Environment}"
+          ROUTINE_WINDOWS: "7d,30d,mtd"
+          ALL_WINDOWS: "7d,30d,90d,mtd"
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub "${Customer}-jotform-${Environment}-${AWS::AccountId}"
+        - DynamoDBReadPolicy:
+            TableName: !Sub "${Customer}-jotform-submissions-${Environment}"
+        - SQSPollerPolicy:
+            QueueName: !Sub "${Customer}-precompute-${Environment}"
+      Events:
+        SqsNudge:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt PrecomputeQueue.Arn
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 30   # coalesce a burst into one run
+        Backstop:
+          Type: Schedule
+          Properties:
+            Schedule: rate(30 minutes)           # safety net + heavy 90d refresh
+
+Outputs:
+  QueueUrl:
+    Description: SQS queue the webhook should nudge after each submission.
+    Value: !Ref PrecomputeQueue
+  QueueArn:
+    Value: !GetAtt PrecomputeQueue.Arn
