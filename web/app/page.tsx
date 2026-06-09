@@ -252,6 +252,9 @@ export default function Dashboard() {
   function pickDate(day: string) { setLo(day); setHi(day); setPreset("custom"); }
   // Click an MMU bar → filter to just that unit (stay on the current page).
   function pickMmu(fleet: string) { setSelected(new Set([fleet])); setTouched(true); }
+  // Hard floor: the date picker can't go further back than 90 days from today
+  // (live data is capped at 90d; older ranges belong to the scheduled reports).
+  const min90 = (() => { const dt = new Date(); dt.setUTCDate(dt.getUTCDate() - 90); return dt.toISOString().slice(0, 10); })();
 
   // Build the print/report URL from the current filters + chosen tabs.
   function reportUrl(tabsCsv: string) {
@@ -316,16 +319,16 @@ export default function Dashboard() {
         {/* Filters */}
         <div className="mt-4 border-t border-white/10 px-4 py-4 text-sm">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-sidebarfg/60">Date range</div>
-          <div className="mb-2 flex flex-wrap gap-1">
-            {([["7d", 7], ["30d", 30], ["90d", 90], ["MTD", "mtd"], ["All", "all"]] as const).map(([label, v]) => (
+          <div className="mb-2 grid grid-cols-4 gap-1">
+            {([["7d", 7], ["30d", 30], ["90d", 90], ["MTD", "mtd"]] as const).map(([label, v]) => (
               <button key={label} onClick={() => applyPreset(v as number | "mtd" | "all")}
-                className={`rounded-lg border px-2 py-1 text-xs ${preset === v ? "border-accent bg-accent font-semibold text-white" : "border-white/15 bg-white/5 hover:bg-white/15"}`}>{label}</button>
+                className={`rounded-lg border py-1 text-center text-xs ${preset === v ? "border-accent bg-accent font-semibold text-white" : "border-white/15 bg-white/5 hover:bg-white/15"}`}>{label}</button>
             ))}
           </div>
           <div className="mb-4 flex flex-col gap-2">
-            <input type="date" value={lo} min={loBound} max={hiBound} onChange={(e) => { setLo(e.target.value); setPreset("custom"); }}
+            <input type="date" value={lo} min={min90} max={hiBound} onChange={(e) => { setLo(e.target.value); setPreset("custom"); }}
               className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sidebarfg" />
-            <input type="date" value={hi} min={loBound} max={hiBound} onChange={(e) => { setHi(e.target.value); setPreset("custom"); }}
+            <input type="date" value={hi} min={min90} max={hiBound} onChange={(e) => { setHi(e.target.value); setPreset("custom"); }}
               className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sidebarfg" />
           </div>
 
@@ -336,7 +339,7 @@ export default function Dashboard() {
               <button onClick={selectNone} className={`rounded px-2 py-0.5 ${noneActive ? "bg-accent font-semibold text-white" : "text-accent2 hover:underline"}`}>None</button>
             </span>
           </div>
-          <div className="max-h-56 space-y-1 overflow-auto pr-1">
+          <div className="max-h-56 space-y-1 overflow-auto rounded-lg border border-white/15 bg-white/5 p-1.5">
             {allMmus.map((m) => (
               <label key={m} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 hover:bg-white/10">
                 <input type="checkbox" checked={touched ? selected.has(m) : true} onChange={() => toggleMmu(m)} />
