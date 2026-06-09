@@ -74,6 +74,7 @@ export default function Dashboard() {
   const [touched, setTouched] = useState(false);  // false = "all" (default); true = explicit selection
   const [preset, setPreset] = useState<number | "mtd" | "all" | "custom">(30);  // active date-range preset
   const [hideTest, setHideTest] = useState(true);  // exclude internal test operators from customer view
+  const [devMode, setDevMode] = useState(false);   // ?dev in the URL reveals the test-data toggle (for re-design only)
   const [lo, setLo] = useState("");
   const [hi, setHi] = useState("");
   const [loBound, setLoBound] = useState("");
@@ -105,6 +106,7 @@ export default function Dashboard() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { if (typeof window !== "undefined") setDevMode(new URLSearchParams(window.location.search).has("dev")); }, []);
 
   function applyPreset(days: number | "mtd" | "all") {
     if (!hiBound) return;
@@ -238,10 +240,12 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <label className="mt-4 flex cursor-pointer items-center gap-2 border-t border-white/10 pt-4 text-xs text-sidebarfg/80">
-            <input type="checkbox" checked={hideTest} onChange={() => setHideTest((v) => !v)} />
-            <span>Hide test data</span>
-          </label>
+          {devMode && (
+            <label className="mt-4 flex cursor-pointer items-center gap-2 border-t border-white/10 pt-4 text-xs text-sidebarfg/80">
+              <input type="checkbox" checked={hideTest} onChange={() => setHideTest((v) => !v)} />
+              <span>Hide test data</span>
+            </label>
+          )}
         </div>
       </aside>
 
