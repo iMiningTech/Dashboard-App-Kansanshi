@@ -199,18 +199,26 @@ function donutLabel(p: {
 
 export function Donut({ data, colorMap, height = 380 }:
   { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number }) {
+  const print = useContext(PrintContext);
   if (!data.length) return <Empty />;
   const colorOf = (name: string, i: number) => colorMap?.[name] || MASTER_PALETTE[i % MASTER_PALETTE.length];
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  // On screen: leader-line labels. In print (narrow column, labels clip): drop
+  // the leader labels and put the % in the legend instead.
+  const legendFmt = (value: unknown, entry: unknown) => {
+    const v = (entry as { payload?: { value?: number } })?.payload?.value || 0;
+    return `${value} · ${Math.round((v / total) * 100)}%`;
+  };
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
         <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius="60%"
-               paddingAngle={1} labelLine={false} label={donutLabel}>
+               paddingAngle={1} labelLine={false} label={print ? false : donutLabel} isAnimationActive={!print}>
             {data.map((d, i) => <Cell key={i} fill={colorOf(d.name, i)} />)}
           </Pie>
           <Tooltip formatter={(v, n) => [v as number, n as string]} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 11 }} formatter={print ? (legendFmt as never) : undefined} />
         </PieChart>
       </ResponsiveContainer>
     </div>
@@ -242,6 +250,7 @@ export function AreaTrend({ rows, xKey, series, colorMap, height = 320 }:
 
 export function DataTable({ columns, rows, csvName }:
   { columns: { key: string; label: string }[]; rows: Record<string, unknown>[]; csvName?: string }) {
+  const print = useContext(PrintContext);
   // Right-align purely numeric columns (counts, durations, %) — dates/times/text
   // stay left. Detected from the data so callers don't have to annotate.
   const numericCols = new Set(
@@ -269,7 +278,7 @@ export function DataTable({ columns, rows, csvName }:
   }
   return (
     <div>
-      <div className="max-h-80 overflow-auto rounded-xl border border-border">
+      <div className={print ? "rounded-xl border border-border" : "max-h-80 overflow-auto rounded-xl border border-border"}>
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-bg text-left text-xs uppercase tracking-wide text-muted">
             <tr>{columns.map((c) => <th key={c.key} className={`${cls(c.key)} font-medium`}>{c.label}</th>)}</tr>
@@ -285,7 +294,7 @@ export function DataTable({ columns, rows, csvName }:
           </tbody>
         </table>
       </div>
-      {csvName && rows.length > 0 && (
+      {csvName && rows.length > 0 && !print && (
         <button onClick={downloadCsv} className="mt-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs hover:bg-bg">
           ⬇ Download CSV
         </button>
