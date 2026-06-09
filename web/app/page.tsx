@@ -298,9 +298,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex min-h-screen">
-      {/* ── Sidebar (iMining navy) ── */}
-      <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebarfg md:flex">
+    <div className="flex h-screen overflow-hidden">
+      {/* ── Sidebar (iMining navy) — fixed; only the main area scrolls ── */}
+      <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebarfg md:flex">
         <div className="flex h-16 items-center gap-2 px-5">
           <Image src="/imining_white.png" alt="iMining" width={240} height={56} style={{ height: 52, width: "auto" }} />
         </div>
@@ -842,6 +842,13 @@ function UtilView({ d, fleet, selectedDays, onPickDate, onPickMmu }: { d: D; fle
         <Stat label="Avg MMUs loading / day" value={round1(avg)} />
       </div>
 
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ChartCard title="Total activity hours by MMU" subtitle="Click an MMU to filter to that unit">
+          <StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={colourMap} onSelect={onPickMmu} />
+        </ChartCard>
+        <ChartCard title="Fleet-wide activity mix"><Donut data={mix} colorMap={ACTIVITY_COLOURS} /></ChartCard>
+      </div>
+
       <ChartCard title="Fleet utilization — MMUs loading explosives per day"
         subtitle={`Distinct MMUs loading on each activity day vs target (50% of ${fleet} = ${utilTarget}). Green = met or beat target · click a day to filter.`}>
         <BarV data={utilData} target={utilTarget} targetLabel="50% fleet" xLabel="Date" yLabel="MMUs loading explosives" height={340} onSelect={onPickDate} />
@@ -860,12 +867,6 @@ function UtilView({ d, fleet, selectedDays, onPickDate, onPickMmu }: { d: D; fle
           rows={benchRows} csvName="loading_explosives.csv" />
       </ChartCard>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Total activity hours by MMU" subtitle="Click an MMU to filter to that unit">
-          <StackedBar rows={piv.data} xKey="x" series={piv.series} colorMap={colourMap} onSelect={onPickMmu} />
-        </ChartCard>
-        <ChartCard title="Fleet-wide activity mix"><Donut data={mix} colorMap={ACTIVITY_COLOURS} /></ChartCard>
-      </div>
       <ChartCard title="Daily activity hours trend"><AreaTrend rows={daily.data} xKey="x" series={daily.series} colorMap={colourMap} /></ChartCard>
     </div>
   );
