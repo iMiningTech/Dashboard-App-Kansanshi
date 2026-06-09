@@ -268,7 +268,7 @@ export default function Dashboard() {
     if (!REPORT_API) { if (typeof window !== "undefined") window.open(reportUrl(tabs), "_blank"); setReportOpen(false); return; }
     setReportBusy(true);
     try {
-      const r = await fetch(`${REPORT_API}/report`, {
+      const r = await fetch(`${REPORT_API.replace(/\/$/, "")}/report`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ tabs, from: lo, to: hi, mmus: touched ? [...effMmus].join(",") : "", test: devMode && !hideTest ? 1 : 0 }),
       });
