@@ -127,6 +127,7 @@ export default function Dashboard() {
   const [printTabs, setPrintTabs] = useState<string[] | null>(null);  // set when ?print → render the report layout
   const [reportOpen, setReportOpen] = useState(false);
   const [reportBusy, setReportBusy] = useState(false);
+  const [reportLink, setReportLink] = useState<string | null>(null);
   const [reportSel, setReportSel] = useState<Set<string>>(new Set(["overview", "logouts", "util", "prestart", "perf"]));
 
   async function load() {
@@ -266,19 +267,26 @@ export default function Dashboard() {
     const tabs = VIEWS.map((v) => v.id).filter((id) => reportSel.has(id) && id !== "timeline").join(",");
     if (!tabs) return;
     if (!REPORT_API) { if (typeof window !== "undefined") window.open(reportUrl(tabs), "_blank"); setReportOpen(false); return; }
-    setReportBusy(true);
+    setReportBusy(true); setReportLink(null);
     try {
       const r = await fetch(`${REPORT_API.replace(/\/$/, "")}/report`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ tabs, from: lo, to: hi, mmus: touched ? [...effMmus].join(",") : "", test: devMode && !hideTest ? 1 : 0 }),
       });
       const j = await r.json();
-      if (j.url && typeof window !== "undefined") window.open(j.url, "_blank");
-      else alert("Report failed: " + (j.error || "unknown error"));
+      if (j.url) {
+        setReportLink(j.url);  // keep a visible link (the auto-download can be blocked by popup rules)
+        if (typeof document !== "undefined") {
+          const a = document.createElement("a"); a.href = j.url; a.download = "kansanshi-report.pdf";
+          document.body.appendChild(a); a.click(); a.remove();
+        }
+      } else {
+        alert("Report failed: " + (j.error || "unknown error"));
+      }
     } catch (e) {
       alert("Report failed: " + (e instanceof Error ? e.message : String(e)));
     } finally {
-      setReportBusy(false); setReportOpen(false);
+      setReportBusy(false);
     }
   }
 
@@ -354,7 +362,7 @@ export default function Dashboard() {
             <span className="text-lg font-semibold text-fg">MMU Operations — Kansanshi</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setReportOpen(true)} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
+            <button onClick={() => { setReportLink(null); setReportOpen(true); }} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
               <FileText size={15} /> Generate report
             </button>
             <button onClick={load} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
@@ -377,8 +385,14 @@ export default function Dashboard() {
                   </label>
                 ))}
               </div>
+              {reportLink && (
+                <a href={reportLink} download="kansanshi-report.pdf" target="_blank" rel="noopener"
+                  className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-ok/10 px-3 py-2 text-sm font-medium text-ok hover:bg-ok/20">
+                  <FileText size={15} /> Report ready — download
+                </a>
+              )}
               <div className="mt-5 flex justify-end gap-2">
-                <button onClick={() => setReportOpen(false)} disabled={reportBusy} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-bg disabled:opacity-50">Cancel</button>
+                <button onClick={() => setReportOpen(false)} disabled={reportBusy} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-bg disabled:opacity-50">{reportLink ? "Close" : "Cancel"}</button>
                 <button disabled={reportSel.size === 0 || reportBusy} onClick={generateReport}
                   className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
                   {reportBusy ? "Generating…" : REPORT_API ? "Download report" : "Open report"}
