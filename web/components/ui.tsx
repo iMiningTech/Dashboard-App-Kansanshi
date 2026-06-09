@@ -1,7 +1,8 @@
 // Small shadcn-style primitives (Tailwind + tokens). Hand-rolled so there's no
 // CLI step; extend freely. This is the component vocabulary the team reuses.
-import type { ReactNode } from "react";
+import { type ReactNode, useContext } from "react";
 import { cn } from "@/lib/utils";
+import { PrintContext } from "@/lib/print-context";
 
 export function Card({ className, children, onClick }: { className?: string; children: ReactNode; onClick?: () => void }) {
   return (
@@ -16,16 +17,21 @@ export function CardBody({ className, children }: { className?: string; children
 }
 
 export function Stat({ label, value, sub, status, onClick }: { label: string; value: ReactNode; sub?: string; status?: "ok" | "warn" | "bad"; onClick?: () => void }) {
+  const print = useContext(PrintContext);
   const accent = status === "bad" ? "border-t-4 border-t-danger"
     : status === "warn" ? "border-t-4 border-t-warn"
     : status === "ok" ? "border-t-4 border-t-ok" : "";
   const valueColor = status === "bad" ? "text-danger" : status === "warn" ? "text-warn" : "";
+  // In the report, click-hints are meaningless and the columns are tighter, so
+  // strip the hint text, drop the click affordance, and shrink the value a touch.
+  const cleanSub = print && sub ? sub.replace(/\s*·?\s*click to (filter|investigate|drill down)/i, "").trim() : sub;
+  const clickable = onClick && !print;
   return (
-    <Card className={cn(accent, onClick && "cursor-pointer transition hover:border-accent hover:shadow-md")} onClick={onClick}>
-      <CardBody className="text-center">
+    <Card className={cn(accent, clickable && "cursor-pointer transition hover:border-accent hover:shadow-md")} onClick={clickable ? onClick : undefined}>
+      <CardBody className="overflow-hidden text-center">
         <div className="text-sm text-muted">{label}</div>
-        <div className={cn("mt-1 text-3xl font-semibold tracking-tight", valueColor)}>{value}</div>
-        {sub && <div className="mt-1 text-xs text-muted">{sub}</div>}
+        <div className={cn("mt-1 font-semibold tracking-tight break-words", print ? "text-2xl" : "text-3xl", valueColor)}>{value}</div>
+        {cleanSub && <div className="mt-1 text-xs text-muted">{cleanSub}</div>}
       </CardBody>
     </Card>
   );

@@ -38,3 +38,37 @@ html, body {
 /* thin scrollbars in the app shell */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 6px; }
+
+/* ── Report / print layout (?print=1 and the Puppeteer render service) ──────── */
+.report-root { background: #fff; color: rgb(var(--fg)); }
+.report-page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto 14px;
+  padding: 14mm 14mm 16mm;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+  break-after: page;
+  display: flex;
+  flex-direction: column;
+}
+.report-page:last-child { break-after: auto; }
+.report-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  border-bottom: 2px solid rgb(var(--accent)); padding-bottom: 10px; margin-bottom: 16px;
+}
+.report-logo { height: 68px; width: auto; }
+.report-meta { text-align: center; flex: 1; }
+.report-title { font-size: 17px; font-weight: 700; color: rgb(var(--brand)); }
+.report-sub { font-size: 11px; color: rgb(var(--muted)); margin-top: 2px; }
+.report-body { flex: 1; }
+.report-foot { margin-top: 14px; padding-top: 8px; border-top: 1px solid rgb(var(--border));
+  font-size: 10px; color: rgb(var(--muted)); text-align: right; }
+/* keep cards from splitting awkwardly across a page break */
+.report-body .rounded-2xl { break-inside: avoid; }
+
+@media print {
+  body { background: #fff; }
+  .report-page { box-shadow: none; margin: 0; width: auto; min-height: auto; padding: 0; }
+  @page { size: A4; margin: 14mm; }
+}

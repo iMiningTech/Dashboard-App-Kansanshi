@@ -1,11 +1,17 @@
 "use client";
 
+import { useContext } from "react";
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, PieChart, Pie, AreaChart, Area, LabelList, ReferenceLine,
 } from "recharts";
 import { Card, CardBody } from "@/components/ui";
 import { MASTER_PALETTE, BRAND_NAVY, BRAND_ORANGE, RESPONSIBILITY_COLOURS } from "@/lib/colors";
+import { PrintContext } from "@/lib/print-context";
+
+// Re-exported so existing imports `from "@/components/charts"` keep working.
+// True inside the report/print layout → charts use tighter margins.
+export { PrintContext };
 
 const AXIS = { fontSize: 12, fill: "rgb(100 116 130)" };
 const GRID = "rgb(224 230 235)";
@@ -41,6 +47,7 @@ export function BarH({ data, colorMap, height = 360, xLabel, yLabel, accent = tr
       </div>
     );
   }
+  const print = useContext(PrintContext);
   const useAccent = accent && !colorMap;
   const maxV = Math.max(...data.map((d) => d.value));
   const fillOf = (d: { name: string; value: number }, i: number) =>
@@ -50,10 +57,10 @@ export function BarH({ data, colorMap, height = 360, xLabel, yLabel, accent = tr
   return (
     <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
-        <BarChart data={data} layout="vertical" margin={{ left: yLabel ? 24 : 16, right: useAccent ? 34 : 16, bottom: xLabel ? 18 : 0 }}>
+        <BarChart data={data} layout="vertical" margin={{ left: print ? (yLabel ? 8 : 2) : (yLabel ? 24 : 16), right: useAccent ? 34 : 16, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
           <XAxis type="number" allowDecimals={false} tick={AXIS} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
-          <YAxis type="category" dataKey="name" width={150} tick={AXIS}
+          <YAxis type="category" dataKey="name" width={print ? 104 : 150} tick={AXIS}
                  label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
           <Bar dataKey="value" radius={[0, 5, 5, 0]} onClick={handleClick as never}>
@@ -86,6 +93,7 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels, 
       </div>
     );
   }
+  const print = useContext(PrintContext);
   const useAccent = accent && !colorMap && target == null;
   const handleClick = onSelect ? ((entry: { name?: string }) => { if (entry?.name) onSelect(entry.name); }) : undefined;
   const maxV = Math.max(...data.map((d) => d.value));
@@ -108,7 +116,7 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels, 
   return (
     <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ left: yLabel ? 24 : 16, right: target != null ? 92 : 16, top: showValues ? 16 : 0, bottom: xLabel ? 18 : 0 }}>
+        <BarChart data={data} margin={{ left: print ? (yLabel ? 10 : 4) : (yLabel ? 24 : 16), right: target != null ? 92 : 16, top: showValues ? 16 : 0, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
           <XAxis type="category" dataKey="name" tick={AXIS}
                  label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
@@ -135,6 +143,7 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels, 
 export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked = true, xLabel, yLabel, onSelect }:
   { rows: Record<string, unknown>[]; xKey: string; series: string[]; colorMap: Record<string, string>; height?: number; stacked?: boolean; xLabel?: string; yLabel?: string; onSelect?: (x: string) => void }) {
   if (!rows.length) return <Empty />;
+  const print = useContext(PrintContext);
   // Chart-level click → activeLabel is the x-axis category of the clicked column
   // (reliable for stacked bars; a per-segment Bar onClick returns segment data).
   const handleClick = onSelect ? ((state: { activeLabel?: string | number }) => {
@@ -143,7 +152,7 @@ export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked
   return (
     <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
-        <BarChart data={rows} margin={{ left: yLabel ? 16 : 8, right: 8, bottom: xLabel ? 44 : 0 }} onClick={handleClick as never}>
+        <BarChart data={rows} margin={{ left: print ? (yLabel ? 8 : 4) : (yLabel ? 16 : 8), right: 8, bottom: xLabel ? 44 : 0 }} onClick={handleClick as never}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey={xKey} tick={AXIS}
                  label={xLabel ? { value: xLabel, position: "insideBottom", offset: -2, ...AXIS } : undefined} />

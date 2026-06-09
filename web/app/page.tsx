@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   LayoutDashboard, AlertCircle, AlertTriangle, BarChart3, ClipboardCheck, Timer, CalendarRange,
-  User, Activity, RefreshCw, Truck,
+  User, Activity, RefreshCw, Truck, FileText,
 } from "lucide-react";
 import { api, type DashboardData, type MmuStatus, type Asset, type LiveShift } from "@/lib/api";
 import { Card, CardBody, Stat, Badge } from "@/components/ui";
-import { ChartCard, BarH, BarV, StackedBar, Donut, AreaTrend, DataTable, ResponsibilityBar, HourHeatmap } from "@/components/charts";
+import { ChartCard, BarH, BarV, StackedBar, Donut, AreaTrend, DataTable, ResponsibilityBar, HourHeatmap, PrintContext } from "@/components/charts";
 import {
   filterTimeline, filterPrestart, sessionSummary, sessionsWithEnd, activityTimeline,
   kpis, uniqueSorted, groupSum, groupCount,
@@ -41,6 +41,7 @@ function pivot<T>(rows: T[], xKey: (r: T) => string, sKey: (r: T) => string, val
   return { data: xs.map((x) => m.get(x)!), series: Array.from(ss) };
 }
 const round1 = (n: number) => Math.round(n * 10) / 10;
+const REPORT_API = process.env.NEXT_PUBLIC_REPORT_API || "";  // PDF render service base URL
 // Bucket logged hours by responsibility (who owns the time) for the hero bar.
 function responsibilitySegments(act: { activity_type?: string; duration_hours: number }[]) {
   const m = new Map<string, number>();
@@ -62,6 +63,50 @@ const isTestOperator = (name?: string | null) => {
   return /test/i.test(n) || INTERNAL_OPERATORS.has(n);
 };
 
+const PRINT_TITLES: Record<string, string> = {
+  overview: "Overview", logouts: "Operator Metrics", util: "MMU Utilization",
+  prestart: "Faults & Breakdowns", perf: "Shift Performance", timeline: "Shift Timeline",
+};
+
+// Print/report layout: each selected tab rendered on its own A4 page with a
+// branded header + footer. Interaction handlers are no-ops here.
+function PrintReport({ tabs, d, live, assets, lo, hi, fleet, selectedDays, effMmus, mmuLabel }:
+  { tabs: string[]; d: D; live: MmuStatus[]; assets: Asset[]; lo: string; hi: string; fleet: number; selectedDays: number; effMmus: Set<string>; mmuLabel: string }) {
+  const noop = () => {};
+  const generated = new Date().toISOString().slice(0, 16).replace("T", " ");
+  // Signal the render service that charts have had time to draw.
+  useEffect(() => {
+    const t = setTimeout(() => { (window as unknown as { __reportReady?: boolean }).__reportReady = true; }, 1800);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <PrintContext.Provider value={true}>
+      <div className="report-root">
+        {tabs.map((t) => (
+          <section key={t} className="report-page">
+            <header className="report-head">
+              <img src="/orica_logo.png" alt="Orica" className="report-logo" />
+              <div className="report-meta">
+                <div className="report-title">{PRINT_TITLES[t] || t}</div>
+                <div className="report-sub">MMU Operations — Kansanshi · {lo} → {hi} · {mmuLabel}</div>
+              </div>
+            </header>
+            <div className="report-body">
+              {t === "overview" && <OverviewView d={d} live={live} assets={assets} onOpenTimeline={noop} onNavigate={noop} />}
+              {t === "logouts" && <OperatorMetricsView d={d} onPickDate={noop} />}
+              {t === "util" && <UtilView d={d} fleet={fleet} selectedDays={selectedDays} onPickDate={noop} onPickMmu={noop} />}
+              {t === "prestart" && <PrestartView d={d} onPickMmu={noop} />}
+              {t === "perf" && <PerfView d={d} onPickMmu={noop} />}
+              {t === "timeline" && <TimelineView selected={effMmus} />}
+            </div>
+            <footer className="report-foot">Generated {generated} (UTC) · Powered By iMining</footer>
+          </section>
+        ))}
+      </div>
+    </PrintContext.Provider>
+  );
+}
+
 export default function Dashboard() {
   const [raw, setRaw] = useState<DashboardData | null>(null);
   const [live, setLive] = useState<MmuStatus[]>([]);
@@ -79,6 +124,10 @@ export default function Dashboard() {
   const [hi, setHi] = useState("");
   const [loBound, setLoBound] = useState("");
   const [hiBound, setHiBound] = useState("");
+  const [printTabs, setPrintTabs] = useState<string[] | null>(null);  // set when ?print → render the report layout
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportSel, setReportSel] = useState<Set<string>>(new Set(["overview", "logouts", "util", "prestart", "perf"]));
 
   async function load() {
     setLoading(true); setError(null);
@@ -99,9 +148,20 @@ export default function Dashboard() {
         const s = d0.toISOString().slice(0, 10);
         lo30 = min && s < min ? min : s;
       }
-      setLoBound(min); setHiBound(max); setLo(lo30); setHi(max);
-      setPreset(30);
-      setSelected(new Set()); setTouched(false);   // false + empty = "all" selected
+      setLoBound(min); setHiBound(max);
+      // Report/print mode: filters come from the URL so the render service can drive them.
+      const p = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+      if (p.has("print")) {
+        setLo(p.get("from") || lo30); setHi(p.get("to") || max); setPreset("custom");
+        const mmus = p.get("mmus");
+        if (mmus) { setSelected(new Set(mmus.split(",").filter(Boolean))); setTouched(true); }
+        else { setSelected(new Set()); setTouched(false); }
+        setHideTest(p.get("test") !== "1");   // report hides test data unless explicitly asked
+        setPrintTabs((p.get("tabs") || "overview").split(",").filter(Boolean));
+      } else {
+        setLo(lo30); setHi(max); setPreset(30);
+        setSelected(new Set()); setTouched(false);   // false + empty = "all" selected
+      }
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }
@@ -192,6 +252,43 @@ export default function Dashboard() {
   // Click an MMU bar → filter to just that unit (stay on the current page).
   function pickMmu(fleet: string) { setSelected(new Set([fleet])); setTouched(true); }
 
+  // Build the print/report URL from the current filters + chosen tabs.
+  function reportUrl(tabsCsv: string) {
+    const params = new URLSearchParams({ print: "1", tabs: tabsCsv, from: lo, to: hi });
+    if (touched) params.set("mmus", [...effMmus].join(","));
+    if (devMode && !hideTest) params.set("test", "1");
+    return `${typeof window !== "undefined" ? window.location.pathname : "/"}?${params.toString()}`;
+  }
+
+  // Generate the report: call the render service for a PDF download. If the
+  // service URL isn't configured yet, fall back to opening the print view.
+  async function generateReport() {
+    const tabs = VIEWS.map((v) => v.id).filter((id) => reportSel.has(id) && id !== "timeline").join(",");
+    if (!tabs) return;
+    if (!REPORT_API) { if (typeof window !== "undefined") window.open(reportUrl(tabs), "_blank"); setReportOpen(false); return; }
+    setReportBusy(true);
+    try {
+      const r = await fetch(`${REPORT_API}/report`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tabs, from: lo, to: hi, mmus: touched ? [...effMmus].join(",") : "", test: devMode && !hideTest ? 1 : 0 }),
+      });
+      const j = await r.json();
+      if (j.url && typeof window !== "undefined") window.open(j.url, "_blank");
+      else alert("Report failed: " + (j.error || "unknown error"));
+    } catch (e) {
+      alert("Report failed: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setReportBusy(false); setReportOpen(false);
+    }
+  }
+
+  // ── Report/print mode: render the paged report instead of the app shell. ──
+  if (printTabs && !loading && !error) {
+    const mmuLabel = !touched ? "All MMUs" : selected.size === 1 ? [...selected][0] : `${effMmus.size} of ${allMmus.length} MMUs`;
+    return <PrintReport tabs={printTabs} d={d} live={live} assets={assets} lo={lo} hi={hi}
+      fleet={effMmus.size || allMmus.length} selectedDays={rangeDays(lo, hi)} effMmus={effMmus} mmuLabel={mmuLabel} />;
+  }
+
   return (
     <div className="flex min-h-screen">
       {/* ── Sidebar (iMining navy) ── */}
@@ -256,10 +353,40 @@ export default function Dashboard() {
             <Image src="/orica_logo.png" alt="Orica" width={180} height={56} style={{ height: 48, width: "auto" }} />
             <span className="text-lg font-semibold text-fg">MMU Operations — Kansanshi</span>
           </div>
-          <button onClick={load} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
-            <RefreshCw size={15} /> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setReportOpen(true)} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
+              <FileText size={15} /> Generate report
+            </button>
+            <button onClick={load} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
+              <RefreshCw size={15} /> Refresh
+            </button>
+          </div>
         </header>
+
+        {reportOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={() => setReportOpen(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="text-lg font-semibold text-fg">Generate report</div>
+              <div className="mb-4 mt-1 text-sm text-muted">Pick the sections to include — each becomes its own page, using the current date range &amp; MMU filters.</div>
+              <div className="space-y-1">
+                {VIEWS.filter((v) => v.id !== "timeline").map(({ id, label }) => (
+                  <label key={id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-bg">
+                    <input type="checkbox" checked={reportSel.has(id)}
+                      onChange={() => { const n = new Set(reportSel); n.has(id) ? n.delete(id) : n.add(id); setReportSel(n); }} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button onClick={() => setReportOpen(false)} disabled={reportBusy} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-bg disabled:opacity-50">Cancel</button>
+                <button disabled={reportSel.size === 0 || reportBusy} onClick={generateReport}
+                  className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+                  {reportBusy ? "Generating…" : REPORT_API ? "Download report" : "Open report"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className="flex-1 overflow-auto p-6">
           {error && <Card><CardBody><div className="flex items-center gap-2 text-danger"><AlertCircle size={18} /> {error}</div></CardBody></Card>}
