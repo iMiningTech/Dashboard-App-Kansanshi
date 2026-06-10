@@ -13,10 +13,7 @@ export function Card({ className, children, onClick }: { className?: string; chi
 }
 
 export function CardBody({ className, children }: { className?: string; children: ReactNode }) {
-  // In a report, tighten the padding between content and the card border so charts
-  // (especially pies) sit closer to the edge and don't overflow onto the next page.
-  const print = useContext(PrintContext);
-  return <div className={cn(print ? "p-2" : "p-4", className)}>{children}</div>;
+  return <div className={cn("p-4", className)}>{children}</div>;
 }
 
 export function Stat({ label, value, sub, status, onClick }: { label: string; value: ReactNode; sub?: string; status?: "ok" | "warn" | "bad"; onClick?: () => void }) {

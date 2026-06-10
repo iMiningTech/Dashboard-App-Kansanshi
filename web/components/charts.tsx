@@ -17,12 +17,11 @@ const AXIS = { fontSize: 12, fill: "rgb(100 116 130)" };
 const GRID = "rgb(224 230 235)";
 
 export function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  const print = useContext(PrintContext);
   return (
     <Card>
       <CardBody>
-        <div className={`${print ? "mb-0.5" : "mb-1"} text-sm font-semibold text-fg`}>{title}</div>
-        {subtitle && <div className={`${print ? "mb-0.5" : "mb-3"} text-xs text-muted`}>{subtitle}</div>}
+        <div className="mb-1 text-sm font-semibold text-fg">{title}</div>
+        {subtitle && <div className="mb-3 text-xs text-muted">{subtitle}</div>}
         {children}
       </CardBody>
     </Card>
@@ -218,14 +217,11 @@ export function Donut({ data, colorMap, height = 380 }:
   const print = useContext(PrintContext);
   if (!data.length) return <Empty />;
   const colorOf = (name: string, i: number) => colorMap?.[name] || MASTER_PALETTE[i % MASTER_PALETTE.length];
-  // Print: a shorter container kills the big vertical whitespace around the pie so
-  // it doesn't push the card onto the next page.
-  const h = print ? 250 : height;
   return (
-    <div style={{ width: "100%", height: h }}>
+    <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
-        <PieChart margin={{ top: 4, right: 10, bottom: 4, left: 10 }}>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius={print ? "72%" : "60%"}
+        <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius="60%"
                paddingAngle={1} labelLine={false} label={print ? donutInsideLabel : donutLabel} isAnimationActive={!print}>
             {data.map((d, i) => <Cell key={i} fill={colorOf(d.name, i)} />)}
           </Pie>
