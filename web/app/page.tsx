@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useContext, type ReactNode } from "react";
 import Image from "next/image";
 import {
   LayoutDashboard, AlertCircle, AlertTriangle, BarChart3, ClipboardCheck, Timer, CalendarRange,
@@ -105,12 +105,25 @@ function PrintReport({ tabs, d, live, assets, lo, hi, fleet, selectedDays, effMm
     pages.push({ key: t, title: PRINT_TITLES[t] || t, node });
   }
 
-  // Signal the render service once charts/timelines have had time to draw. Give the
-  // per-MMU timelines (each fetches its live shift) extra time to load.
+  // Signal the render service when the report is ready. Rather than a fixed timer
+  // (which blanks timeline pages once there are more MMUs than the timer allows for),
+  // wait until every per-MMU timeline has finished loading — each TimelineView
+  // decrements __timelinesPending when its fetch settles — then a short settle for
+  // charts to paint. A hard cap guarantees we never stall a hung fetch.
   useEffect(() => {
-    const delay = Math.min(14000, 1800 + activeMmuList.length * 700);
-    const t = setTimeout(() => { (window as unknown as { __reportReady?: boolean }).__reportReady = true; }, delay);
-    return () => clearTimeout(t);
+    const w = window as unknown as { __reportReady?: boolean; __timelinesPending?: number };
+    w.__timelinesPending = activeMmuList.length;
+    w.__reportReady = false;
+    const start = Date.now();
+    let done = false;
+    const ready = () => { if (!done) { done = true; w.__reportReady = true; } };
+    const poll = setInterval(() => {
+      if ((w.__timelinesPending ?? 0) <= 0 && Date.now() - start >= 1800) {
+        clearInterval(poll); setTimeout(ready, 1200);
+      }
+    }, 200);
+    const cap = setTimeout(() => { clearInterval(poll); ready(); }, 17000);  // before the render's 20s wait
+    return () => { clearInterval(poll); clearTimeout(cap); };
   }, [activeMmuList.length]);
 
   return (
@@ -1141,6 +1154,7 @@ function PerfView({ d, onPickMmu }: { d: D; onPickMmu: (fleet: string) => void }
 /* ── Shift timeline (single MMU) — LIVE off /live/shift (no precompute). ── */
 function TimelineView({ selected }: { selected: Set<string> }) {
   const mmu = selected.size === 1 ? [...selected][0] : null;
+  const isPrint = useContext(PrintContext);
   const [data, setData] = useState<LiveShift | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1152,9 +1166,13 @@ function TimelineView({ selected }: { selected: Set<string> }) {
     api.liveShift(mmu)
       .then((r) => { if (alive) setData(r); })
       .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : String(e)); })
-      .finally(() => { if (alive) setLoading(false); });
+      .finally(() => {
+        if (alive) setLoading(false);
+        // In a report, tell PrintReport this timeline finished loading.
+        if (isPrint) { const w = window as unknown as { __timelinesPending?: number }; w.__timelinesPending = Math.max(0, (w.__timelinesPending ?? 1) - 1); }
+      });
     return () => { alive = false; };
-  }, [mmu]);
+  }, [mmu, isPrint]);
 
   if (!mmu) return <Card><CardBody><div className="text-sm text-muted">Select a single MMU in the left panel to view its shift timeline.</div></CardBody></Card>;
   if (loading && !data) return <Card><CardBody><div className="text-sm text-muted">Loading live shift for {mmu}…</div></CardBody></Card>;
