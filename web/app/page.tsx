@@ -139,12 +139,18 @@ function PrintReport({ tabs, reportKind, d, live, assets, lo, hi, fleet, selecte
         {pages.map((p) => (
           <section key={p.key} className="report-page">
             <header className="report-head">
-              <img src="/orica_logo.png" alt="Orica" className="report-logo" />
-              <div className="report-meta">
-                <div className="report-kind">{kindLabel}</div>
-                <div className="report-title">{p.title}</div>
-                <div className="report-sub">{p.sub || `MMU Operations — Kansanshi · ${lo} to ${hi} · ${mmuLabel}`}</div>
-                <div className="report-by">Generated {generated} (UTC) · Powered by iMining</div>
+              <div className="report-band">
+                <img src="/imining_white.png" alt="iMining" className="report-band-logo" />
+                <span className="report-kind">{kindLabel}</span>
+              </div>
+              <div className="report-rule" />
+              <div className="report-titlerow">
+                <div className="report-meta">
+                  <div className="report-title">MMU Operations — Kansanshi · {p.title}</div>
+                  <div className="report-sub">{p.sub ? p.sub.replace(/^MMU Operations — Kansanshi · /, "") : `${lo} to ${hi} · ${mmuLabel}`}</div>
+                  <div className="report-by">Generated {generated} (UTC) · Powered by iMining</div>
+                </div>
+                <img src="/orica_logo.png" alt="Orica" className="report-orica" />
               </div>
             </header>
             <div className="report-body">{p.node}</div>
