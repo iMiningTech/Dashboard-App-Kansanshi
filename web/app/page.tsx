@@ -71,9 +71,15 @@ const PRINT_TITLES: Record<string, string> = {
 
 // Print/report layout: each selected tab rendered on its own A4 page with a
 // branded header + footer. Interaction handlers are no-ops here.
-function PrintReport({ tabs, d, live, assets, lo, hi, fleet, selectedDays, effMmus, mmuLabel }:
-  { tabs: string[]; d: D; live: MmuStatus[]; assets: Asset[]; lo: string; hi: string; fleet: number; selectedDays: number; effMmus: Set<string>; mmuLabel: string }) {
+const REPORT_KIND_LABEL: Record<string, string> = {
+  daily: "Daily Report", weekly: "Weekly Report", monthly: "Monthly Report", operator: "Operator Performance Report",
+};
+
+function PrintReport({ tabs, reportKind, d, live, assets, lo, hi, fleet, selectedDays, effMmus, mmuLabel }:
+  { tabs: string[]; reportKind: string; d: D; live: MmuStatus[]; assets: Asset[]; lo: string; hi: string; fleet: number; selectedDays: number; effMmus: Set<string>; mmuLabel: string }) {
   const noop = () => {};
+  const kindLabel = REPORT_KIND_LABEL[reportKind] || "Report";
+  const hideTiles = reportKind !== "daily";   // live MMU tiles only add value on the daily
   const generated = new Date().toISOString().slice(0, 16).replace("T", " ");
 
   // MMUs that logged anything in the window — drives the per-MMU timeline pages
@@ -96,7 +102,7 @@ function PrintReport({ tabs, d, live, assets, lo, hi, fleet, selectedDays, effMm
       continue;
     }
     const node =
-      t === "overview" ? <OverviewView d={d} live={live} assets={assets} onOpenTimeline={noop} onNavigate={noop} /> :
+      t === "overview" ? <OverviewView d={d} live={live} assets={assets} onOpenTimeline={noop} onNavigate={noop} hideSiteStatus={hideTiles} /> :
       t === "logouts" ? <OperatorMetricsView d={d} onPickDate={noop} /> :
       t === "util" ? <UtilView d={d} fleet={fleet} selectedDays={selectedDays} onPickDate={noop} onPickMmu={noop} /> :
       t === "prestart" ? <PrestartView d={d} onPickMmu={noop} /> :
@@ -134,6 +140,7 @@ function PrintReport({ tabs, d, live, assets, lo, hi, fleet, selectedDays, effMm
             <header className="report-head">
               <img src="/orica_logo.png" alt="Orica" className="report-logo" />
               <div className="report-meta">
+                <div className="report-kind">{kindLabel}</div>
                 <div className="report-title">{p.title}</div>
                 <div className="report-sub">{p.sub || `MMU Operations — Kansanshi · ${lo} to ${hi} · ${mmuLabel}`}</div>
                 <div className="report-by">Generated {generated} (UTC) · Powered by iMining</div>
@@ -165,6 +172,7 @@ export default function Dashboard() {
   const [loBound, setLoBound] = useState("");
   const [hiBound, setHiBound] = useState("");
   const [printTabs, setPrintTabs] = useState<string[] | null>(null);  // set when ?print → render the report layout
+  const [reportKind, setReportKind] = useState<string>("daily");      // daily | weekly | monthly | operator
   const [reportOpen, setReportOpen] = useState(false);
   const [reportBusy, setReportBusy] = useState(false);
   const [reportLink, setReportLink] = useState<string | null>(null);
@@ -204,6 +212,7 @@ export default function Dashboard() {
         if (mmus) { setSelected(new Set(mmus.split(",").filter(Boolean))); setTouched(true); }
         else { setSelected(new Set()); setTouched(false); }
         setHideTest(p.get("test") !== "1");   // report hides test data unless explicitly asked
+        setReportKind(p.get("kind") || "daily");
         setPrintTabs((p.get("tabs") || "overview").split(",").filter(Boolean));
       } else {
         setLo(lo30); setHi(max); setPreset(30);
@@ -368,7 +377,7 @@ export default function Dashboard() {
   // ── Report/print mode: render the paged report instead of the app shell. ──
   if (printTabs && !loading && !error) {
     const mmuLabel = !touched ? "All MMUs" : selected.size === 1 ? [...selected][0] : `${effMmus.size} of ${allMmus.length} MMUs`;
-    return <PrintReport tabs={printTabs} d={d} live={live} assets={assets} lo={lo} hi={hi}
+    return <PrintReport tabs={printTabs} reportKind={reportKind} d={d} live={live} assets={assets} lo={lo} hi={hi}
       fleet={effMmus.size || allMmus.length} selectedDays={rangeDays(lo, hi)} effMmus={effMmus} mmuLabel={mmuLabel} />;
   }
 
@@ -624,8 +633,8 @@ type D = {
 };
 
 /* ── Overview: site tiles + KPIs + live status pie + activity mix ── */
-function OverviewView({ d, live, assets, onOpenTimeline, onNavigate }:
-  { d: D; live: MmuStatus[]; assets: Asset[]; onOpenTimeline: (fleet: string) => void; onNavigate: (v: ViewId) => void }) {
+function OverviewView({ d, live, assets, onOpenTimeline, onNavigate, hideSiteStatus = false }:
+  { d: D; live: MmuStatus[]; assets: Asset[]; onOpenTimeline: (fleet: string) => void; onNavigate: (v: ViewId) => void; hideSiteStatus?: boolean }) {
   // Current fleet status — what each active unit is doing RIGHT NOW (live snapshot).
   const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
   const fleet: { fleet_no: string }[] = assets.length ? assets : live.map((m) => ({ fleet_no: m.fleet_no }));
@@ -654,7 +663,7 @@ function OverviewView({ d, live, assets, onOpenTimeline, onNavigate }:
 
   return (
     <div className="space-y-6">
-      <SiteStatus assets={assets} live={live} onOpenTimeline={onOpenTimeline} />
+      {!hideSiteStatus && <SiteStatus assets={assets} live={live} onOpenTimeline={onOpenTimeline} />}
       <div className="flex items-center gap-3 pt-2">
         <div className="h-px flex-1 bg-border" />
         <span className="text-xs font-medium uppercase tracking-wide text-muted">For the selected date range &amp; MMUs</span>
