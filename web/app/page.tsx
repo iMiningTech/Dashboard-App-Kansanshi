@@ -903,6 +903,7 @@ function OperatorMetricsView({ d, onPickDate }: { d: D; onPickDate: (day: string
 
 /* ── MMU Utilization ── */
 function UtilView({ d, fleet, selectedDays, onPickDate, onPickMmu }: { d: D; fleet: number; selectedDays: number; onPickDate: (day: string) => void; onPickMmu: (fleet: string) => void }) {
+  const print = useContext(PrintContext);  // report → KPI tiles on one row
   // Distinct days with loading-explosives events, vs the selected range length.
   // Loading is the metric that matters — days with none aren't productive days.
   // Matches the fleet utilization chart below.
@@ -965,7 +966,7 @@ function UtilView({ d, fleet, selectedDays, onPickDate, onPickMmu }: { d: D; fle
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className={print ? "grid grid-cols-5 gap-3" : "grid grid-cols-2 gap-4 lg:grid-cols-5"}>
         <Stat label="Reporting fleet" value={fleet} sub="MMUs in scope" />
         <Stat label="Days of loading data" value={`${loadingDays} / ${selectedDays}`} sub="loading days / selected days" />
         <Stat label="Benches loaded" value={benches} sub="loading-explosives events" />
