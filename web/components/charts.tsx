@@ -59,7 +59,7 @@ export function BarH({ data, colorMap, height = 360, xLabel, yLabel, accent = tr
       <ResponsiveContainer>
         <BarChart data={data} layout="vertical" margin={{ left: print ? (yLabel ? 8 : 2) : (yLabel ? 24 : 16), right: useAccent ? 34 : 16, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
-          <XAxis type="number" allowDecimals={false} tick={AXIS} domain={[0, (dataMax: number) => Math.ceil((dataMax || 1) * 1.15)]} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
+          <XAxis type="number" allowDecimals={false} tick={AXIS} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
           <YAxis type="category" dataKey="name" width={print ? 104 : 150} tick={AXIS}
                  label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
@@ -121,7 +121,6 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels, 
           <XAxis type="category" dataKey="name" tick={AXIS}
                  label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
           <YAxis type="number" allowDecimals={false} tick={AXIS}
-                 domain={[0, (dataMax: number) => Math.ceil(Math.max(dataMax || 1, target ?? 0) * 1.12)]}
                  label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
           {target != null && (
@@ -212,6 +211,22 @@ function donutInsideLabel(p: { cx?: number; cy?: number; midAngle?: number; inne
   );
 }
 
+// Wrapping legend: items flow across multiple centered lines and never run off the
+// right edge (the default inline legend clips when there are many segments).
+function DonutLegend(props: { payload?: { value?: string; color?: string }[] }) {
+  const items = props.payload || [];
+  return (
+    <ul style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "2px 12px", margin: 0, padding: "2px 8px", listStyle: "none", fontSize: 11, lineHeight: 1.4 }}>
+      {items.map((e, i) => (
+        <li key={i} style={{ display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", color: "rgb(31 41 55)" }}>
+          <span style={{ width: 9, height: 9, borderRadius: 2, background: e.color, display: "inline-block", flexShrink: 0 }} />
+          {e.value}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function Donut({ data, colorMap, height = 380 }:
   { data: { name: string; value: number }[]; colorMap?: Record<string, string>; height?: number }) {
   const print = useContext(PrintContext);
@@ -228,7 +243,7 @@ export function Donut({ data, colorMap, height = 380 }:
             {data.map((d, i) => <Cell key={i} fill={colorOf(d.name, i)} />)}
           </Pie>
           <Tooltip formatter={(v, n) => [v as number, n as string]} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend content={DonutLegend as never} />
         </PieChart>
       </ResponsiveContainer>
     </div>
