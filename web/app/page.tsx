@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import {
   LayoutDashboard, AlertCircle, AlertTriangle, BarChart3, ClipboardCheck, Timer, CalendarRange,
@@ -75,32 +75,58 @@ function PrintReport({ tabs, d, live, assets, lo, hi, fleet, selectedDays, effMm
   { tabs: string[]; d: D; live: MmuStatus[]; assets: Asset[]; lo: string; hi: string; fleet: number; selectedDays: number; effMmus: Set<string>; mmuLabel: string }) {
   const noop = () => {};
   const generated = new Date().toISOString().slice(0, 16).replace("T", " ");
-  // Signal the render service that charts have had time to draw.
+
+  // MMUs that logged anything in the window — drives the per-MMU timeline pages
+  // (the "timeline-each" token). At a 5am send these are yesterday's active units.
+  const activeMmuList = uniqueSorted(d.tl.map((r) => r.mmu_id)).filter(Boolean) as string[];
+
+  // Build the flat page list. "timeline-each" expands to one timeline per active MMU.
+  type Page = { key: string; title: string; sub?: string; node: ReactNode };
+  const pages: Page[] = [];
+  for (const t of tabs) {
+    if (t === "timeline-each") {
+      if (!activeMmuList.length) {
+        pages.push({ key: "tl-none", title: "Shift Timelines", node: <Card><CardBody><div className="text-sm text-muted">No MMUs logged activity for this day.</div></CardBody></Card> });
+      } else {
+        activeMmuList.forEach((m) => pages.push({
+          key: `tl-${m}`, title: `Shift Timeline — ${m}`, sub: `MMU Operations — Kansanshi · ${lo} to ${hi} · ${m}`,
+          node: <TimelineView selected={new Set([m])} />,
+        }));
+      }
+      continue;
+    }
+    const node =
+      t === "overview" ? <OverviewView d={d} live={live} assets={assets} onOpenTimeline={noop} onNavigate={noop} /> :
+      t === "logouts" ? <OperatorMetricsView d={d} onPickDate={noop} /> :
+      t === "util" ? <UtilView d={d} fleet={fleet} selectedDays={selectedDays} onPickDate={noop} onPickMmu={noop} /> :
+      t === "prestart" ? <PrestartView d={d} onPickMmu={noop} /> :
+      t === "perf" ? <PerfView d={d} onPickMmu={noop} /> :
+      t === "timeline" ? <TimelineView selected={effMmus} /> : null;
+    pages.push({ key: t, title: PRINT_TITLES[t] || t, node });
+  }
+
+  // Signal the render service once charts/timelines have had time to draw. Give the
+  // per-MMU timelines (each fetches its live shift) extra time to load.
   useEffect(() => {
-    const t = setTimeout(() => { (window as unknown as { __reportReady?: boolean }).__reportReady = true; }, 1800);
+    const delay = Math.min(14000, 1800 + activeMmuList.length * 700);
+    const t = setTimeout(() => { (window as unknown as { __reportReady?: boolean }).__reportReady = true; }, delay);
     return () => clearTimeout(t);
-  }, []);
+  }, [activeMmuList.length]);
+
   return (
     <PrintContext.Provider value={true}>
       <div className="report-root">
-        {tabs.map((t) => (
-          <section key={t} className="report-page">
+        {pages.map((p) => (
+          <section key={p.key} className="report-page">
             <header className="report-head">
               <img src="/orica_logo.png" alt="Orica" className="report-logo" />
               <div className="report-meta">
-                <div className="report-title">{PRINT_TITLES[t] || t}</div>
-                <div className="report-sub">MMU Operations — Kansanshi · {lo} to {hi} · {mmuLabel}</div>
+                <div className="report-title">{p.title}</div>
+                <div className="report-sub">{p.sub || `MMU Operations — Kansanshi · ${lo} to ${hi} · ${mmuLabel}`}</div>
                 <div className="report-by">Generated {generated} (UTC) · Powered by iMining</div>
               </div>
             </header>
-            <div className="report-body">
-              {t === "overview" && <OverviewView d={d} live={live} assets={assets} onOpenTimeline={noop} onNavigate={noop} />}
-              {t === "logouts" && <OperatorMetricsView d={d} onPickDate={noop} />}
-              {t === "util" && <UtilView d={d} fleet={fleet} selectedDays={selectedDays} onPickDate={noop} onPickMmu={noop} />}
-              {t === "prestart" && <PrestartView d={d} onPickMmu={noop} />}
-              {t === "perf" && <PerfView d={d} onPickMmu={noop} />}
-              {t === "timeline" && <TimelineView selected={effMmus} />}
-            </div>
+            <div className="report-body">{p.node}</div>
           </section>
         ))}
       </div>
@@ -262,6 +288,9 @@ export default function Dashboard() {
   // Hard floor: the date picker can't go further back than 90 days from today
   // (live data is capped at 90d; older ranges belong to the scheduled reports).
   const min90 = (() => { const dt = new Date(); dt.setUTCDate(dt.getUTCDate() - 90); return dt.toISOString().slice(0, 10); })();
+  // Cap the picker at *today* (Kansanshi time, UTC+2) — not the latest data date,
+  // so you can always select yesterday/today even before that day's data lands.
+  const todayCat = new Date(Date.now() + 2 * 3600 * 1000).toISOString().slice(0, 10);
 
   // Build the print/report URL from the current filters + chosen tabs.
   function reportUrl(tabsCsv: string) {
@@ -339,7 +368,7 @@ export default function Dashboard() {
         </div>
         <nav className="px-3">
           {VIEWS.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setView(id)}
+            <button key={id} onClick={() => { if (id === "overview") { applyPreset(30); setSelected(new Set()); setTouched(false); } setView(id); }}
               className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm ${view === id ? "bg-accent text-white font-medium" : "text-sidebarfg/80 hover:bg-white/10"}`}>
               <Icon size={18} /> {label}
             </button>
@@ -356,9 +385,9 @@ export default function Dashboard() {
             ))}
           </div>
           <div className="mb-4 flex flex-col gap-2">
-            <input type="date" value={lo} min={min90} max={hiBound} onChange={(e) => { setLo(e.target.value); setPreset("custom"); }}
+            <input type="date" value={lo} min={min90} max={todayCat} onChange={(e) => { setLo(e.target.value); setPreset("custom"); }}
               className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sidebarfg" />
-            <input type="date" value={hi} min={min90} max={hiBound} onChange={(e) => { setHi(e.target.value); setPreset("custom"); }}
+            <input type="date" value={hi} min={min90} max={todayCat} onChange={(e) => { setHi(e.target.value); setPreset("custom"); }}
               className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-sidebarfg" />
           </div>
 
@@ -1027,6 +1056,7 @@ function PrestartView({ d, onPickMmu }: { d: D; onPickMmu: (fleet: string) => vo
         <Stat label="Most-flagged MMU" value={topMmu} sub={`${topN} faults + breakdowns · click to filter`} onClick={() => topMmu !== "—" && onPickMmu(topMmu)} />
         <Stat label="No. of times MMU used after pre-start fault" value={incidents.length} sub="loaded explosives same day" />
       </div>
+      {(faults.length || breakdowns.length) ? (<>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ChartCard title="Pre-start fault flags by MMU" subtitle="Click a bar to filter to that MMU"><BarH data={byMmu} xLabel="Fault flags" yLabel="MMU" onSelect={onPickMmu} /></ChartCard>
         <ChartCard title="Pre-Start Faults by checklist category"><Donut data={byCat} colorMap={CATEGORY_COLOURS} /></ChartCard>
@@ -1055,6 +1085,9 @@ function PrestartView({ d, onPickMmu }: { d: D; onPickMmu: (fleet: string) => vo
         <DataTable columns={[{ key: "MMU", label: "MMU" }, { key: "Date", label: "Date" }, { key: "Category", label: "Category" }, { key: "Item", label: "Item" }]}
           rows={rows} csvName="prestart_faults.csv" />
       </ChartCard>
+      </>) : (
+        <Card><CardBody><div className="py-10 text-center text-sm text-muted">No pre-start faults or breakdowns were logged for this period.</div></CardBody></Card>
+      )}
     </div>
   );
 }

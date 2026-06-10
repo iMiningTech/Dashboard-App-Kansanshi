@@ -108,9 +108,14 @@ def lambda_handler(event, context):
         windows = explicit or ROUTINE
 
     if not force:
-        newest, gen = newest_received(), last_generated(windows[0] if windows else "30d")
+        # Guard against the STALEST window we're about to generate — not windows[0].
+        # windows[0] is "7d", which the SQS nudge keeps perpetually fresh, so guarding
+        # on it made the backstop skip forever and the heavy 90d window never refreshed.
+        newest = newest_received()
+        gens = [g for g in (last_generated(w) for w in (windows or ["30d"])) if g]
+        gen = min(gens) if gens else ""
         if newest and gen and newest <= gen:
-            print(f"no new submissions since {gen} — skipping", flush=True)
+            print(f"all target windows fresh as of {gen} — skipping", flush=True)
             return {"skipped": True, "since": gen}
 
     run(windows)
