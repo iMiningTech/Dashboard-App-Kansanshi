@@ -72,7 +72,8 @@ const PRINT_TITLES: Record<string, string> = {
 // Print/report layout: each selected tab rendered on its own A4 page with a
 // branded header + footer. Interaction handlers are no-ops here.
 const REPORT_KIND_LABEL: Record<string, string> = {
-  daily: "Daily Report", weekly: "Weekly Report", monthly: "Monthly Report", operator: "Operator Performance Report",
+  daily: "Daily Report", weekly: "Weekly Report", monthly: "Monthly Report",
+  operator: "Operator Performance Report", custom: "Custom Report",
 };
 
 function PrintReport({ tabs, reportKind, d, live, assets, lo, hi, fleet, selectedDays, effMmus, mmuLabel }:
@@ -316,7 +317,7 @@ export default function Dashboard() {
 
   // Build the print/report URL from the current filters + chosen tabs.
   function reportUrl(tabsCsv: string) {
-    const params = new URLSearchParams({ print: "1", tabs: tabsCsv, from: lo, to: hi });
+    const params = new URLSearchParams({ print: "1", tabs: tabsCsv, from: lo, to: hi, kind: "custom" });
     if (touched) params.set("mmus", [...effMmus].join(","));
     if (devMode && !hideTest) params.set("test", "1");
     return `${typeof window !== "undefined" ? window.location.pathname : "/"}?${params.toString()}`;
@@ -332,7 +333,7 @@ export default function Dashboard() {
     try {
       const r = await fetch(`${REPORT_API.replace(/\/$/, "")}/report`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tabs, from: lo, to: hi, mmus: touched ? [...effMmus].join(",") : "", test: devMode && !hideTest ? 1 : 0 }),
+        body: JSON.stringify({ tabs, from: lo, to: hi, mmus: touched ? [...effMmus].join(",") : "", test: devMode && !hideTest ? 1 : 0, kind: "custom" }),
       });
       const j = await r.json();
       if (j.url) {

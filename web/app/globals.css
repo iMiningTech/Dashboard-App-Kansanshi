@@ -73,8 +73,12 @@ html, body {
 
 @media print {
   html, body { background: #fff !important; }
-  .report-page { box-shadow: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-  @page { size: A4; margin: 14mm; }
+  /* Pin to the printable width (A4 210mm − the render's 12mm L/R PDF margins = 186mm)
+     so Recharts' ResponsiveContainer measures the real page width at the 1240px render
+     viewport, instead of ballooning to the viewport and overflowing/shifting the PDF.
+     Page margins come solely from the render's page.pdf() margins, so @page is 0. */
+  .report-page { box-shadow: none; margin: 0 auto; width: 186mm; min-height: auto; padding: 0; }
+  @page { size: A4; margin: 0; }
 }
 /* also force white when the report renders (covers the headless print emulation) */
 .report-root { background: #fff; min-height: 100vh; }
