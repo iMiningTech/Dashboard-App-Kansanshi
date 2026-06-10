@@ -28,10 +28,10 @@ export function Stat({ label, value, sub, status, onClick }: { label: string; va
   const clickable = onClick && !print;
   return (
     <Card className={cn(accent, clickable && "cursor-pointer transition hover:border-accent hover:shadow-md")} onClick={clickable ? onClick : undefined}>
-      <CardBody className="overflow-hidden text-center">
-        <div className="text-sm text-muted">{label}</div>
-        <div className={cn("mt-1 font-semibold tracking-tight break-words", print ? "text-2xl" : "text-3xl", valueColor)}>{value}</div>
-        {cleanSub && <div className="mt-1 text-xs text-muted">{cleanSub}</div>}
+      <CardBody className={cn("overflow-hidden text-center", print && "p-2")}>
+        <div className={cn("text-muted", print ? "text-[11px] leading-tight" : "text-sm")}>{label}</div>
+        <div className={cn("font-semibold tracking-tight break-words", print ? "mt-0.5 text-lg leading-tight" : "mt-1 text-3xl", valueColor)}>{value}</div>
+        {cleanSub && <div className={cn("text-muted", print ? "mt-0.5 text-[10px] leading-tight" : "mt-1 text-xs")}>{cleanSub}</div>}
       </CardBody>
     </Card>
   );

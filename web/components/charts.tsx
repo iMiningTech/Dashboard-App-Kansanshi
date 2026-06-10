@@ -292,7 +292,7 @@ export function DataTable({ columns, rows, csvName }:
       return hasNum;
     }).map((c) => c.key)
   );
-  const cls = (key: string) => `px-3 py-2 ${numericCols.has(key) ? "text-right tabular-nums" : ""}`;
+  const cls = (key: string) => `${print ? "px-2 py-1 whitespace-nowrap" : "px-3 py-2"} ${numericCols.has(key) ? "text-right tabular-nums" : ""}`;
   function downloadCsv() {
     const header = columns.map((c) => `"${c.label}"`).join(",");
     const body = rows.map((r) => columns.map((c) => `"${String(r[c.key] ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -305,7 +305,7 @@ export function DataTable({ columns, rows, csvName }:
   return (
     <div>
       <div className={print ? "rounded-xl border border-border" : "max-h-80 overflow-auto rounded-xl border border-border"}>
-        <table className="w-full text-sm">
+        <table className={`w-full ${print ? "text-[11px]" : "text-sm"}`}>
           <thead className="sticky top-0 bg-bg text-left text-xs uppercase tracking-wide text-muted">
             <tr>{columns.map((c) => <th key={c.key} className={`${cls(c.key)} font-medium`}>{c.label}</th>)}</tr>
           </thead>
