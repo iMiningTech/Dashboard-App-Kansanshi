@@ -55,7 +55,7 @@ export function BarH({ data, colorMap, height = 360, xLabel, yLabel, accent = tr
     : useAccent ? (d.value === maxV ? BRAND_ORANGE : BRAND_NAVY)
     : MASTER_PALETTE[i % MASTER_PALETTE.length];
   return (
-    <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
+    <div style={{ width: "100%", minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
         <BarChart data={data} layout="vertical" margin={{ left: print ? (yLabel ? 8 : 2) : (yLabel ? 24 : 16), right: useAccent ? 34 : 16, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
@@ -114,7 +114,7 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels, 
     );
   };
   return (
-    <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
+    <div style={{ width: "100%", minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
         <BarChart data={data} margin={{ left: print ? (yLabel ? 10 : 4) : (yLabel ? 24 : 16), right: target != null ? 92 : 16, top: showValues ? 16 : 0, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
@@ -151,7 +151,7 @@ export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked
     if (state?.activeLabel != null) onSelect(String(state.activeLabel));
   }) : undefined;
   return (
-    <div style={{ width: "100%", height }} className={onSelect ? "cursor-pointer" : undefined}>
+    <div style={{ width: "100%", minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
         <BarChart data={rows} margin={{ left: print ? (yLabel ? 8 : 4) : (yLabel ? 16 : 8), right: 8, bottom: xLabel ? 44 : 0 }} onClick={handleClick as never}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
@@ -217,11 +217,13 @@ export function Donut({ data, colorMap, height = 380 }:
   const print = useContext(PrintContext);
   if (!data.length) return <Empty />;
   const colorOf = (name: string, i: number) => colorMap?.[name] || MASTER_PALETTE[i % MASTER_PALETTE.length];
+  // Print: shorter container + larger pie removes the big vertical dead space.
+  const h = print ? 250 : height;
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height: h }}>
       <ResponsiveContainer>
-        <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius="60%"
+        <PieChart margin={{ top: 4, right: 10, bottom: 4, left: 10 }}>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius={print ? "72%" : "60%"}
                paddingAngle={1} labelLine={false} label={print ? donutInsideLabel : donutLabel} isAnimationActive={!print}>
             {data.map((d, i) => <Cell key={i} fill={colorOf(d.name, i)} />)}
           </Pie>

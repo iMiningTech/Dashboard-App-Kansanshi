@@ -636,6 +636,7 @@ type D = {
 /* ── Overview: site tiles + KPIs + live status pie + activity mix ── */
 function OverviewView({ d, live, assets, onOpenTimeline, onNavigate, hideSiteStatus = false }:
   { d: D; live: MmuStatus[]; assets: Asset[]; onOpenTimeline: (fleet: string) => void; onNavigate: (v: ViewId) => void; hideSiteStatus?: boolean }) {
+  const print = useContext(PrintContext);  // report → KPI tiles on one row
   // Current fleet status — what each active unit is doing RIGHT NOW (live snapshot).
   const liveByFleet = new Map(live.map((m) => [m.fleet_no, m]));
   const fleet: { fleet_no: string }[] = assets.length ? assets : live.map((m) => ({ fleet_no: m.fleet_no }));
@@ -670,7 +671,7 @@ function OverviewView({ d, live, assets, onOpenTimeline, onNavigate, hideSiteSta
         <span className="text-xs font-medium uppercase tracking-wide text-muted">For the selected date range &amp; MMUs</span>
         <div className="h-px flex-1 bg-border" />
       </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className={print ? "grid grid-cols-4 gap-3" : "grid grid-cols-2 gap-4 lg:grid-cols-4"}>
         <Stat label="Missing shift-ends" value={d.k.missingLogouts} sub={`${d.k.missingPct.toFixed(0)}% of sessions · click to investigate`} status={missStatus} onClick={() => onNavigate("logouts")} />
         <Stat label="Active MMUs" value={d.k.activeMmus} sub="click to investigate" onClick={() => onNavigate("util")} />
         <Stat label="Pre-start faults" value={d.k.faults} sub="click to investigate" status={d.k.faults > 0 ? "warn" : "ok"} onClick={() => onNavigate("prestart")} />
@@ -747,6 +748,7 @@ function OperatorPicker({ all, selected, onChange }:
 }
 
 function OperatorMetricsView({ d, onPickDate }: { d: D; onPickDate: (day: string) => void }) {
+  const print = useContext(PrintContext);  // report → KPI tiles on one row
   const allOps = useMemo(() => uniqueSorted(d.sessions.map((s) => s.operator_name)), [d.sessions]);
   const [opSel, setOpSel] = useState<Set<string> | null>(null);  // null = all
   const effOps = opSel ?? new Set(allOps);
@@ -835,7 +837,7 @@ function OperatorMetricsView({ d, onPickDate }: { d: D; onPickDate: (day: string
         <OperatorPicker all={allOps} selected={effOps} onChange={setOpSel} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className={print ? "grid grid-cols-4 gap-3" : "grid grid-cols-2 gap-4 lg:grid-cols-4"}>
         <Stat label="Operators on shift" value={operators} sub="ran ≥1 shift in range" />
         <Stat label="Benches loaded" value={benches} sub="loading-explosives events" />
         <Stat label="Benches per operator" value={operators ? round1(benches / operators) : 0} />
@@ -1003,6 +1005,7 @@ function UtilView({ d, fleet, selectedDays, onPickDate, onPickMmu }: { d: D; fle
 
 /* ── Pre-start faults ── */
 function PrestartView({ d, onPickMmu }: { d: D; onPickMmu: (fleet: string) => void }) {
+  const print = useContext(PrintContext);  // report → KPI tiles on one row
   const faults = d.ps.filter((p) => p.fault_flag);
   const breakdowns = d.act.filter((r) => r.activity_type === "Breakdown");
 
@@ -1073,7 +1076,7 @@ function PrestartView({ d, onPickMmu }: { d: D; onPickMmu: (fleet: string) => vo
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className={print ? "grid grid-cols-4 gap-3" : "grid grid-cols-2 gap-4 lg:grid-cols-4"}>
         <Stat label="Pre-start fault flags" value={faults.length} sub="over selected dates" status={faults.length > 0 ? "warn" : "ok"} />
         <Stat label="Breakdowns logged" value={breakdowns.length} sub="breakdown events" status={breakdowns.length > 0 ? "bad" : "ok"} />
         <Stat label="Most-flagged MMU" value={topMmu} sub={`${topN} faults + breakdowns · click to filter`} onClick={() => topMmu !== "—" && onPickMmu(topMmu)} />
