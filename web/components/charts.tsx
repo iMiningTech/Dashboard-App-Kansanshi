@@ -15,6 +15,14 @@ export { PrintContext };
 
 const AXIS = { fontSize: 12, fill: "rgb(100 116 130)" };
 const GRID = "rgb(224 230 235)";
+// Explicit chart width in the report (print). ResponsiveContainer's runtime
+// auto-measure is unreliable in the headless PDF renderer (it sometimes grabs a
+// partial width, leaving the chart small and left-of-centre). Every report chart
+// is full-width at our page size, so we pin a deterministic px width: page content
+// = 703px viewport − 32px card padding ≈ 671px. On screen (dashboard) charts stay
+// fluid at 100%.
+const PRINT_CHART_W = 671;
+const chartW = (print: boolean) => (print ? PRINT_CHART_W : "100%");
 
 export function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
@@ -55,7 +63,7 @@ export function BarH({ data, colorMap, height = 360, xLabel, yLabel, accent = tr
     : useAccent ? (d.value === maxV ? BRAND_ORANGE : BRAND_NAVY)
     : MASTER_PALETTE[i % MASTER_PALETTE.length];
   return (
-    <div style={{ width: "100%", minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
+    <div style={{ width: chartW(print), minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
         <BarChart data={data} layout="vertical" margin={{ left: print ? (yLabel ? 8 : 2) : (yLabel ? 24 : 16), right: useAccent ? 34 : 16, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
@@ -114,7 +122,7 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels, 
     );
   };
   return (
-    <div style={{ width: "100%", minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
+    <div style={{ width: chartW(print), minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
         <BarChart data={data} margin={{ left: print ? (yLabel ? 10 : 4) : (yLabel ? 24 : 16), right: target != null ? 92 : 16, top: showValues ? 16 : 0, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
@@ -150,7 +158,7 @@ export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked
     if (state?.activeLabel != null) onSelect(String(state.activeLabel));
   }) : undefined;
   return (
-    <div style={{ width: "100%", minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
+    <div style={{ width: chartW(print), minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
         <BarChart data={rows} margin={{ left: print ? (yLabel ? 8 : 4) : (yLabel ? 16 : 8), right: print ? 36 : 12, bottom: xLabel ? 44 : 0 }} onClick={handleClick as never}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
@@ -235,7 +243,7 @@ export function Donut({ data, colorMap, height = 380 }:
   // Print: shorter container + larger pie removes the big vertical dead space.
   const h = print ? 250 : height;
   return (
-    <div style={{ width: "100%", height: h }}>
+    <div style={{ width: chartW(print), height: h, margin: "0 auto" }}>
       <ResponsiveContainer>
         <PieChart margin={{ top: 4, right: 10, bottom: 4, left: 10 }}>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius={print ? "72%" : "60%"}
@@ -255,7 +263,7 @@ export function AreaTrend({ rows, xKey, series, colorMap, height = 320 }:
   const print = useContext(PrintContext);
   if (!rows.length) return <Empty />;
   return (
-    <div style={{ width: "100%", minWidth: 0, height }}>
+    <div style={{ width: chartW(print), minWidth: 0, height }}>
       <ResponsiveContainer>
         <AreaChart data={rows} margin={{ left: 8, right: print ? 36 : 12 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
