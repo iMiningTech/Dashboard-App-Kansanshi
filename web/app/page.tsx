@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   LayoutDashboard, AlertCircle, AlertTriangle, BarChart3, ClipboardCheck, Timer, CalendarRange,
-  User, Activity, RefreshCw, Truck, FileText,
+  User, Activity, RefreshCw, Truck, FileText, Mail, Check,
 } from "lucide-react";
 import { api, type DashboardData, type MmuStatus, type Asset, type LiveShift } from "@/lib/api";
 import { Card, CardBody, Stat, Badge } from "@/components/ui";
@@ -42,6 +42,7 @@ function pivot<T>(rows: T[], xKey: (r: T) => string, sKey: (r: T) => string, val
 }
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const REPORT_API = process.env.NEXT_PUBLIC_REPORT_API || "";  // PDF render service base URL
+const SUBSCRIBE_API = process.env.NEXT_PUBLIC_SUBSCRIBE_API || "";  // report subscription service base URL
 // Bucket logged hours by responsibility (who owns the time) for the hero bar.
 function responsibilitySegments(act: { activity_type?: string; duration_hours: number }[]) {
   const m = new Map<string, number>();
@@ -129,6 +130,12 @@ export default function Dashboard() {
   const [reportBusy, setReportBusy] = useState(false);
   const [reportLink, setReportLink] = useState<string | null>(null);
   const [reportSel, setReportSel] = useState<Set<string>>(new Set(["overview", "logouts", "util", "prestart", "perf"]));
+  const [subOpen, setSubOpen] = useState(false);
+  const [subEmail, setSubEmail] = useState("");
+  const [subCadences, setSubCadences] = useState<Set<string>>(new Set(["daily"]));
+  const [subBusy, setSubBusy] = useState(false);
+  const [subDone, setSubDone] = useState(false);
+  const [subErr, setSubErr] = useState<string | null>(null);
 
   async function load() {
     setLoading(true); setError(null);
@@ -293,6 +300,29 @@ export default function Dashboard() {
     }
   }
 
+  // Subscribe to scheduled email reports (daily/weekly/monthly).
+  async function subscribe() {
+    setSubErr(null);
+    const cadences = [...subCadences];
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(subEmail.trim())) { setSubErr("Please enter a valid email address."); return; }
+    if (!cadences.length) { setSubErr("Pick at least one frequency."); return; }
+    if (!SUBSCRIBE_API) { setSubErr("Subscriptions aren't configured yet."); return; }
+    setSubBusy(true);
+    try {
+      const r = await fetch(`${SUBSCRIBE_API.replace(/\/$/, "")}/subscribe`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: subEmail.trim(), cadences }),
+      });
+      const j = await r.json();
+      if (j.ok) setSubDone(true);
+      else setSubErr(j.error || "Subscription failed. Please try again.");
+    } catch (e) {
+      setSubErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubBusy(false);
+    }
+  }
+
   // ── Report/print mode: render the paged report instead of the app shell. ──
   if (printTabs && !loading && !error) {
     const mmuLabel = !touched ? "All MMUs" : selected.size === 1 ? [...selected][0] : `${effMmus.size} of ${allMmus.length} MMUs`;
@@ -368,6 +398,9 @@ export default function Dashboard() {
             <button onClick={() => { setReportLink(null); setReportOpen(true); }} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
               <FileText size={15} /> Generate report
             </button>
+            <button onClick={() => { setSubDone(false); setSubErr(null); setSubOpen(true); }} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
+              <Mail size={15} /> Subscribe to reports
+            </button>
             <button onClick={load} className="flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-bg">
               <RefreshCw size={15} /> Refresh
             </button>
@@ -401,6 +434,47 @@ export default function Dashboard() {
                   {reportBusy ? "Generating…" : REPORT_API ? "Download report" : "Open report"}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {subOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={() => setSubOpen(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              {subDone ? (
+                <div className="py-2 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-ok/10 text-ok"><Check size={24} /></div>
+                  <div className="text-lg font-semibold text-fg">You&apos;re subscribed</div>
+                  <div className="mt-1 text-sm text-muted">A confirmation is on its way to <span className="font-medium text-fg">{subEmail}</span>. Every report includes a one-click unsubscribe link.</div>
+                  <button onClick={() => setSubOpen(false)} className="mt-5 rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white">Done</button>
+                </div>
+              ) : (
+                <>
+                  <div className="text-lg font-semibold text-fg">Subscribe to reports</div>
+                  <div className="mb-4 mt-1 text-sm text-muted">Get the Kansanshi MMU Operations report emailed automatically. Choose how often:</div>
+                  <input type="email" value={subEmail} onChange={(e) => setSubEmail(e.target.value)} placeholder="you@company.com"
+                    className="mb-3 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none focus:border-accent" />
+                  <div className="space-y-1">
+                    {[["daily", "Daily", "Each morning — yesterday's operational snapshot"], ["weekly", "Weekly", "Monday — the past 7 days, full report"], ["monthly", "Monthly", "1st of the month — previous month, full report"]].map(([id, label, desc]) => (
+                      <label key={id} className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-bg">
+                        <input type="checkbox" className="mt-0.5" checked={subCadences.has(id)}
+                          onChange={() => { const n = new Set(subCadences); n.has(id) ? n.delete(id) : n.add(id); setSubCadences(n); }} />
+                        <span><span className="font-medium text-fg">{label}</span><span className="block text-xs text-muted">{desc}</span></span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-muted">
+                    By subscribing you agree to receive recurring report emails from iMining at this address. We use it only to send these reports — you can unsubscribe at any time via the link in every email.
+                  </p>
+                  {subErr && <div className="mt-3 text-sm text-danger">{subErr}</div>}
+                  <div className="mt-5 flex justify-end gap-2">
+                    <button onClick={() => setSubOpen(false)} disabled={subBusy} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-bg disabled:opacity-50">Cancel</button>
+                    <button disabled={subBusy} onClick={subscribe} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+                      {subBusy ? "Subscribing…" : "Subscribe"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
