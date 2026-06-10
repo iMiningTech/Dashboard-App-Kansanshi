@@ -75,7 +75,7 @@ html, body {
 .report-title { font-size: 17px; font-weight: 700; color: rgb(var(--brand)); }
 .report-sub { font-size: 11px; color: rgb(var(--muted)); margin-top: 2px; }
 .report-by { font-size: 9px; color: rgb(var(--muted)); margin-top: 3px; }
-.report-orica { height: 42px; width: auto; display: block; flex-shrink: 0; }
+.report-orica { height: 63px; width: auto; display: block; flex-shrink: 0; }
 .report-body { flex: 1; }
 /* keep cards from splitting awkwardly across a page break */
 .report-body .rounded-2xl { break-inside: avoid; }
