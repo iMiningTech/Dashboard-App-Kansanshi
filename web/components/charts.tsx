@@ -17,11 +17,12 @@ const AXIS = { fontSize: 12, fill: "rgb(100 116 130)" };
 const GRID = "rgb(224 230 235)";
 
 export function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const print = useContext(PrintContext);
   return (
     <Card>
       <CardBody>
-        <div className="mb-1 text-sm font-semibold text-fg">{title}</div>
-        {subtitle && <div className="mb-3 text-xs text-muted">{subtitle}</div>}
+        <div className={`${print ? "mb-0.5" : "mb-1"} text-sm font-semibold text-fg`}>{title}</div>
+        {subtitle && <div className={`${print ? "mb-0.5" : "mb-3"} text-xs text-muted`}>{subtitle}</div>}
         {children}
       </CardBody>
     </Card>
@@ -59,7 +60,7 @@ export function BarH({ data, colorMap, height = 360, xLabel, yLabel, accent = tr
       <ResponsiveContainer>
         <BarChart data={data} layout="vertical" margin={{ left: print ? (yLabel ? 8 : 2) : (yLabel ? 24 : 16), right: useAccent ? 34 : 16, bottom: xLabel ? 18 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
-          <XAxis type="number" allowDecimals={false} tick={AXIS} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
+          <XAxis type="number" allowDecimals={false} tick={AXIS} domain={[0, (dataMax: number) => Math.ceil((dataMax || 1) * 1.15)]} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
           <YAxis type="category" dataKey="name" width={print ? 104 : 150} tick={AXIS}
                  label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
@@ -121,6 +122,7 @@ export function BarV({ data, colorMap, height = 360, xLabel, yLabel, barLabels, 
           <XAxis type="category" dataKey="name" tick={AXIS}
                  label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, ...AXIS } : undefined} />
           <YAxis type="number" allowDecimals={false} tick={AXIS}
+                 domain={[0, (dataMax: number) => Math.ceil(Math.max(dataMax || 1, target ?? 0) * 1.12)]}
                  label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", style: { textAnchor: "middle" }, ...AXIS } : undefined} />
           <Tooltip />
           {target != null && (
@@ -216,11 +218,14 @@ export function Donut({ data, colorMap, height = 380 }:
   const print = useContext(PrintContext);
   if (!data.length) return <Empty />;
   const colorOf = (name: string, i: number) => colorMap?.[name] || MASTER_PALETTE[i % MASTER_PALETTE.length];
+  // Print: a shorter container kills the big vertical whitespace around the pie so
+  // it doesn't push the card onto the next page.
+  const h = print ? 250 : height;
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height: h }}>
       <ResponsiveContainer>
-        <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius="60%"
+        <PieChart margin={{ top: 4, right: 10, bottom: 4, left: 10 }}>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius="38%" outerRadius={print ? "72%" : "60%"}
                paddingAngle={1} labelLine={false} label={print ? donutInsideLabel : donutLabel} isAnimationActive={!print}>
             {data.map((d, i) => <Cell key={i} fill={colorOf(d.name, i)} />)}
           </Pie>
