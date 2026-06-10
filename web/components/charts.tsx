@@ -153,7 +153,7 @@ export function StackedBar({ rows, xKey, series, colorMap, height = 420, stacked
   return (
     <div style={{ width: "100%", minWidth: 0, height }} className={onSelect ? "cursor-pointer" : undefined}>
       <ResponsiveContainer>
-        <BarChart data={rows} margin={{ left: print ? (yLabel ? 8 : 4) : (yLabel ? 16 : 8), right: 8, bottom: xLabel ? 44 : 0 }} onClick={handleClick as never}>
+        <BarChart data={rows} margin={{ left: print ? (yLabel ? 8 : 4) : (yLabel ? 16 : 8), right: print ? 36 : 12, bottom: xLabel ? 44 : 0 }} onClick={handleClick as never}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey={xKey} tick={AXIS}
                  label={xLabel ? { value: xLabel, position: "insideBottom", offset: -2, ...AXIS } : undefined} />
@@ -237,11 +237,12 @@ export function Donut({ data, colorMap, height = 380 }:
 
 export function AreaTrend({ rows, xKey, series, colorMap, height = 320 }:
   { rows: Record<string, unknown>[]; xKey: string; series: string[]; colorMap: Record<string, string>; height?: number }) {
+  const print = useContext(PrintContext);
   if (!rows.length) return <Empty />;
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", minWidth: 0, height }}>
       <ResponsiveContainer>
-        <AreaChart data={rows} margin={{ left: 8, right: 8 }}>
+        <AreaChart data={rows} margin={{ left: 8, right: print ? 36 : 12 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey={xKey} tick={AXIS} />
           <YAxis tick={AXIS} />
