@@ -16,12 +16,14 @@ export { PrintContext };
 const AXIS = { fontSize: 12, fill: "rgb(100 116 130)" };
 const GRID = "rgb(224 230 235)";
 // Explicit chart width in the report (print). ResponsiveContainer's runtime
-// auto-measure is unreliable in the headless PDF renderer (it sometimes grabs a
-// partial width, leaving the chart small and left-of-centre). Every report chart
-// is full-width at our page size, so we pin a deterministic px width: page content
-// = 703px viewport − 32px card padding ≈ 671px. On screen (dashboard) charts stay
-// fluid at 100%.
-const PRINT_CHART_W = 671;
+// auto-measure is unreliable in the headless PDF renderer (it grabs a partial
+// width, leaving the chart small and left-of-centre), so we pin a deterministic
+// px width and the chart fills its card every render. This value is MEASURED from
+// the actual PDF: at the render service's 1240px viewport the report content is
+// ~182mm wide ≈ 1074px, minus the card's 32px padding ≈ 1042px of chart space.
+// NOTE: this is tied to the render viewport (1240px). If render/index.mjs's
+// defaultViewport width changes, re-measure and update this number.
+const PRINT_CHART_W = 1040;
 const chartW = (print: boolean) => (print ? PRINT_CHART_W : "100%");
 
 export function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {

@@ -992,14 +992,14 @@ function UtilView({ d, fleet, selectedDays, onPickDate, onPickMmu }: { d: D; fle
         </ChartCard>
       )}
 
+      <ChartCard title="Daily activity hours trend"><AreaTrend rows={daily.data} xKey="x" series={daily.series} colorMap={colourMap} /></ChartCard>
+
       <ChartCard title="Loading-explosives detail"
         subtitle={hasBench ? "Each loading event with its bench location" : "Bench Location / Specify populate once the pipeline is re-run to capture them"}>
         <DataTable
           columns={[{ key: "Date", label: "Date" }, { key: "Time", label: "Time" }, { key: "MMU", label: "MMU" }, { key: "Bench Location", label: "Bench Location" }, { key: "Specify", label: "Specify" }, { key: "Operator", label: "Operator" }]}
           rows={benchRows} csvName="loading_explosives.csv" />
       </ChartCard>
-
-      <ChartCard title="Daily activity hours trend"><AreaTrend rows={daily.data} xKey="x" series={daily.series} colorMap={colourMap} /></ChartCard>
     </div>
   );
 }
