@@ -1203,14 +1203,16 @@ function TimelineView({ selected }: { selected: Set<string> }) {
   const events = data.events || [];
   const hh = (iso?: string | null) => (iso || "").slice(11, 16) || "—";
 
-  const startEvt = events.find((e) => e.shift_event === "START");
+  const startIdx = events.findIndex((e) => e.shift_event === "START");
+  const startEvt = startIdx >= 0 ? events[startIdx] : undefined;
   const startTime = startEvt?.time || shift.since || events[0]?.time || null;
   const startMsForEnd = startTime ? Date.parse(startTime) : NaN;
-  // A shift is built login → logout. Only a logout AFTER the login closes it; a
-  // logout logged BEFORE the login is a stale/historical event (same day) and must
-  // NOT mark the timeline complete. (`!(t < start)` also tolerates an unknown start.)
-  const endEvt = events.find((e) => e.shift_event === "END" && !(Date.parse(e.time || "") < startMsForEnd));
-  const endFromShift = shift.ended_at && !(Date.parse(shift.ended_at) < startMsForEnd) ? shift.ended_at : null;
+  // Build login → logout. The closing logout must come AFTER the login in the event
+  // sequence (events are time-ordered). A logout that appears BEFORE the login — even
+  // in the same minute (equal timestamps) — is a stale/historical event and must NOT
+  // close the timeline. Position, not clock, is the reliable signal here.
+  const endEvt = (startIdx >= 0 ? events.slice(startIdx + 1) : events).find((e) => e.shift_event === "END");
+  const endFromShift = shift.ended_at && Date.parse(shift.ended_at) > startMsForEnd ? shift.ended_at : null;
   const endTime = endEvt?.time || endFromShift || null;
   const acts = events.filter((e) => !e.shift_event);
 
