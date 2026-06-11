@@ -1235,12 +1235,14 @@ function TimelineView({ selected }: { selected: Set<string> }) {
     const t = Date.parse(events[i].time || ""), nt = Date.parse(events[i + 1].time || "");
     if (!isNaN(t) && !isNaN(nt) && nt > t) durMin.set(events[i].submission_id || String(i), Math.min(Math.round((nt - t) / 60000), 240));
   }
-  const log = acts.map((a) => ({
-    Time: hh(a.time),
-    Activity: a.activity || "—",
-    "Duration (min)": durMin.get(a.submission_id || "") ?? "—",
-    Operator: a.operator || "—",
-    Flag: a.fault_flag ? "⚠ fault" : "",
+  // Table lists EVERY event in time order — including shift start/end — so login →
+  // logout → login again (and shift-ends mid-activity) are visible for diagnosis.
+  const log = events.map((e) => ({
+    Time: hh(e.time),
+    Activity: e.shift_event === "START" ? "● Shift Start" : e.shift_event === "END" ? "■ Shift End" : (e.activity || "—"),
+    "Duration (min)": durMin.get(e.submission_id || "") ?? "—",
+    Operator: e.operator || "—",
+    Flag: e.fault_flag ? "⚠ fault" : "",
   }));
   const dayLabel = (startTime || "").slice(0, 10) || "—";
 
