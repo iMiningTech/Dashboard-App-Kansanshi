@@ -161,6 +161,47 @@ function PrintReport({ tabs, reportKind, d, live, assets, lo, hi, fleet, selecte
   );
 }
 
+// ── Branded preview access gate ────────────────────────────────────────────────
+// Soft gate: hides the dashboard UI behind a password. The password is never stored
+// in source — only the SHA-256 hash (NEXT_PUBLIC_ACCESS_HASH) is, and entries are
+// hashed client-side and compared. Good enough to stop casual/link-shared viewing;
+// not a hard security boundary (lock the data API for that).
+function AccessGate({ onUnlock }: { onUnlock: () => void }) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setErr(false);
+    try {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw));
+      const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+      if (hex === process.env.NEXT_PUBLIC_ACCESS_HASH) {
+        try { localStorage.setItem("k_access", "1"); } catch { /* ignore */ }
+        onUnlock();
+      } else { setErr(true); setBusy(false); }
+    } catch { setErr(true); setBusy(false); }
+  }
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-sidebar px-4">
+      <form onSubmit={submit} className="w-full max-w-sm rounded-2xl bg-surface p-8 shadow-2xl">
+        <Image src="/imining_blue.png" alt="iMining" width={200} height={48} style={{ height: 40, width: "auto" }} className="mb-6" priority />
+        <div className="text-lg font-semibold text-fg">MMU Operations — Kansanshi</div>
+        <div className="mb-5 mt-1 text-sm text-muted">Preview access. Enter the password to continue.</div>
+        <input type="password" autoFocus value={pw} onChange={(e) => { setPw(e.target.value); setErr(false); }}
+          placeholder="Password"
+          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none focus:border-accent" />
+        {err && <div className="mt-2 text-sm text-danger">Incorrect password.</div>}
+        <button type="submit" disabled={busy || !pw}
+          className="mt-4 w-full rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          {busy ? "Checking…" : "Enter"}
+        </button>
+        <div className="mt-5 text-center text-xs text-muted">Powered by iMining</div>
+      </form>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [raw, setRaw] = useState<DashboardData | null>(null);
   const [live, setLive] = useState<MmuStatus[]>([]);
@@ -190,6 +231,7 @@ export default function Dashboard() {
   const [subBusy, setSubBusy] = useState(false);
   const [subDone, setSubDone] = useState(false);
   const [subErr, setSubErr] = useState<string | null>(null);
+  const [authed, setAuthed] = useState(false);  // access gate (preview password)
 
   async function load() {
     setLoading(true); setError(null);
@@ -230,6 +272,14 @@ export default function Dashboard() {
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
   useEffect(() => { if (typeof window !== "undefined") setDevMode(new URLSearchParams(window.location.search).has("dev")); }, []);
+  // Access gate: open if no password is configured, if it's the report renderer
+  // (?print), or once unlocked this session/device.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    if (p.has("print") || !process.env.NEXT_PUBLIC_ACCESS_HASH) { setAuthed(true); return; }
+    try { if (localStorage.getItem("k_access") === "1") setAuthed(true); } catch { /* ignore */ }
+  }, []);
 
   function applyPreset(days: number | "mtd" | "all") {
     if (!hiBound) return;
@@ -387,6 +437,9 @@ export default function Dashboard() {
     return <PrintReport tabs={printTabs} reportKind={reportKind} d={d} live={live} assets={assets} lo={lo} hi={hi}
       fleet={effMmus.size || allMmus.length} selectedDays={rangeDays(lo, hi)} effMmus={effMmus} mmuLabel={mmuLabel} />;
   }
+
+  // ── Access gate (preview password) — shown until unlocked. ──
+  if (!authed) return <AccessGate onUnlock={() => setAuthed(true)} />;
 
   return (
     <div className="flex h-screen overflow-hidden">
