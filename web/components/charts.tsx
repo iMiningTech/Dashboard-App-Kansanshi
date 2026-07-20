@@ -367,6 +367,35 @@ export function ResponsibilityBar({ segments }:
   );
 }
 
+// Horizontal KPI meters — one labelled progress bar per 0–100% metric.
+// Mirrors the ResponsibilityBar band styling (rounded track, coloured fill,
+// legend-style sub caption). Used on the Overview for the Availability /
+// Utilization / Reliability trio. Each item carries its own RAG colour so the
+// caller owns the thresholds.
+export function KpiMeters({ items }:
+  { items: { label: string; pct: number; color: string; sub?: string }[] }) {
+  if (!items.length) return <Empty />;
+  return (
+    <div className="space-y-5">
+      {items.map((m) => {
+        const w = Math.max(0, Math.min(100, m.pct));
+        return (
+          <div key={m.label}>
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <span className="text-sm font-medium">{m.label}</span>
+              <span className="text-lg font-bold tabular-nums" style={{ color: m.color }}>{m.pct.toFixed(0)}%</span>
+            </div>
+            <div className="h-3.5 w-full overflow-hidden rounded-full bg-muted/15" title={`${m.label}: ${m.pct.toFixed(1)}%`}>
+              <div className="h-full rounded-full transition-[width]" style={{ width: `${w}%`, background: m.color }} />
+            </div>
+            {m.sub && <div className="mt-1.5 text-xs text-muted">{m.sub}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function rgba(hex: string, a: number) {
   const m = hex.replace("#", "");
   const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);

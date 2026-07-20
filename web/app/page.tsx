@@ -8,13 +8,13 @@ import {
 } from "lucide-react";
 import { api, type DashboardData, type MmuStatus, type Asset, type LiveShift } from "@/lib/api";
 import { Card, CardBody, Stat, Badge } from "@/components/ui";
-import { ChartCard, BarH, BarV, StackedBar, Donut, AreaTrend, DataTable, ResponsibilityBar, HourHeatmap, PrintContext } from "@/components/charts";
+import { ChartCard, BarH, BarV, StackedBar, Donut, AreaTrend, DataTable, ResponsibilityBar, KpiMeters, HourHeatmap, PrintContext } from "@/components/charts";
 import {
   filterTimeline, filterPrestart, sessionSummary, sessionsWithEnd, activityTimeline,
   kpis, uniqueSorted, groupSum, groupCount,
 } from "@/lib/data";
 import { ACTIVITY_COLOURS, CATEGORY_COLOURS, MASTER_PALETTE, activityColour,
-  responsibilityOf, RESPONSIBILITY_ORDER, RESPONSIBILITY_COLOURS } from "@/lib/colors";
+  responsibilityOf, RESPONSIBILITY_ORDER, RESPONSIBILITY_COLOURS, STATUS } from "@/lib/colors";
 import { fmtTime } from "@/lib/utils";
 
 const VIEWS = [
@@ -41,6 +41,13 @@ function pivot<T>(rows: T[], xKey: (r: T) => string, sKey: (r: T) => string, val
   return { data: xs.map((x) => m.get(x)!), series: Array.from(ss) };
 }
 const round1 = (n: number) => Math.round(n * 10) / 10;
+
+// Scheduled bench-hours the fleet is booked for per calendar day: 8 MMUs on day
+// shift + 3 on night shift, 10 h each = 110 h. This is the fixed 100% baseline
+// for the Overview's Utilization / Availability / Reliability meters — it does
+// not scale with how many MMUs actually logged on. (There is no day/night flag
+// in the data, so we use the agreed fixed target, not a per-shift split.)
+const BENCH_HOURS_PER_DAY = 8 * 10 + 3 * 10; // = 110
 const REPORT_API = process.env.NEXT_PUBLIC_REPORT_API || "";  // PDF render service base URL
 const SUBSCRIBE_API = process.env.NEXT_PUBLIC_SUBSCRIBE_API || "";  // report subscription service base URL
 // Bucket logged hours by responsibility (who owns the time) for the hero bar.
@@ -720,6 +727,38 @@ function OverviewView({ d, live, assets, onOpenTimeline, onNavigate, hideSiteSta
   const segments = responsibilitySegments(d.act);
   const waiting = segments.find((s) => s.name === "Waiting on mine");
 
+  // Fleet performance meters — Utilization / Availability / Reliability, all as
+  // a % of the scheduled baseline (110 h × the number of calendar days the fleet
+  // actually logged in the selected range; using logged days rather than raw
+  // range span keeps the denominator honest when the range extends past the data).
+  //   benchHours    = every logged activity hour (the truck was on the bench)
+  //   breakdownHrs  = hours on activity_type "Breakdown"
+  //   mineWaitHrs   = hours in the "Waiting on mine" responsibility bucket
+  const perf = (() => {
+    const days = new Set(d.act.map((r) => (r.reporting_date || "").slice(0, 10)).filter(Boolean)).size;
+    const scheduled = BENCH_HOURS_PER_DAY * days;
+    const benchHours = d.act.reduce((s, r) => s + (r.duration_hours || 0), 0);
+    const breakdownHrs = d.act.filter((r) => r.activity_type === "Breakdown").reduce((s, r) => s + (r.duration_hours || 0), 0);
+    const mineWaitHrs = d.act.filter((r) => responsibilityOf(r.activity_type || "") === "Waiting on mine").reduce((s, r) => s + (r.duration_hours || 0), 0);
+    const pct = (n: number) => (scheduled > 0 ? Math.max(0, Math.min(100, (n / scheduled) * 100)) : 0);
+    // Higher is better for all three; RAG thresholds are per-metric.
+    const rag = (v: number, good: number, ok: number) => (v >= good ? STATUS.ok : v >= ok ? STATUS.warn : STATUS.bad);
+    const utilization = pct(benchHours);
+    const availability = pct(scheduled - breakdownHrs - mineWaitHrs);
+    const reliability = pct(scheduled - breakdownHrs);
+    return {
+      days, scheduled,
+      items: [
+        { label: "Utilization", pct: utilization, color: rag(utilization, 85, 65),
+          sub: `${round1(benchHours)} of ${scheduled} scheduled bench-hrs logged (${days} day${days === 1 ? "" : "s"})` },
+        { label: "Availability", pct: availability, color: rag(availability, 85, 70),
+          sub: `${round1(breakdownHrs)} h breakdown + ${round1(mineWaitHrs)} h waiting on mine lost of ${scheduled} h scheduled` },
+        { label: "Reliability", pct: reliability, color: rag(reliability, 95, 85),
+          sub: `${round1(breakdownHrs)} h on breakdowns of ${scheduled} h scheduled` },
+      ],
+    };
+  })();
+
   const missStatus = d.k.missingPct > 25 ? "bad" : d.k.missingPct > 10 ? "warn" : "ok";
 
   return (
@@ -745,6 +784,11 @@ function OverviewView({ d, live, assets, onOpenTimeline, onNavigate, hideSiteSta
             <span className="font-semibold text-accent">{waiting.pct}% ({waiting.hours.toFixed(1)}h)</span> of logged fleet time was spent <span className="font-medium">waiting on mine-supplied explosives &amp; personnel</span> — logged evidence, not idle time.
           </div>
         )}
+      </ChartCard>
+
+      <ChartCard title="Fleet performance"
+        subtitle={`Against ${BENCH_HOURS_PER_DAY} scheduled bench-hrs/day (8 day + 3 night MMUs × 10 h) over ${perf.days} logged day${perf.days === 1 ? "" : "s"} = ${perf.scheduled} h`}>
+        <KpiMeters items={perf.items} />
       </ChartCard>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
